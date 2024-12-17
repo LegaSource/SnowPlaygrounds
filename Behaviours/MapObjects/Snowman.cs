@@ -11,11 +11,20 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         public InteractTrigger snowmanTrigger;
         public Camera camera;
         public Transform cameraPivot;
+        private Camera playerCamera;
 
         public int currentStackedSnowball = 0;
 
         public bool isPlayerHiding = false;
         public PlayerControllerB hidingPlayer;
+
+        private void Start()
+        {
+            if (currentStackedSnowball == 0)
+                currentStackedSnowball = ConfigManager.amountSnowballToBuild.Value;
+
+            playerCamera = GameNetworkManager.Instance.localPlayerController.gameplayCamera;
+        }
 
         public void SnowmanInteraction()
         {
@@ -69,7 +78,7 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         {
             PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
 
-            player.DropAllHeldItemsAndSync();
+            player.DropAllHeldItems();
 
             isPlayerHiding = true;
             hidingPlayer = player;
@@ -81,7 +90,9 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
             if (player == GameNetworkManager.Instance.localPlayerController)
             {
                 camera.enabled = true;
-                StartOfRound.Instance.SwitchCamera(camera);
+                player.gameplayCamera = camera;
+
+                HUDManager.Instance.ChangeControlTip(0, "Exit Snowman : [Q]", clearAllOther: true);
 
                 SPUtilities.SetUntargetable(player);
 
@@ -109,17 +120,24 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
 
             if (player == GameNetworkManager.Instance.localPlayerController)
             {
-                StartOfRound.Instance.SwitchCamera(player.gameplayCamera);
                 camera.enabled = false;
+                player.gameplayCamera = playerCamera;
+
+                HUDManager.Instance.ClearControlTips();
 
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Enable();
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Enable();
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch", false).Enable();
             }
 
+            Destroy(gameObject);
+        }
+
+        public override void OnDestroy()
+        {
             PlaySnowParticle();
             PlaySnowPoof();
-            Destroy(gameObject);
+            base.OnDestroy();
         }
 
         public void PlaySnowParticle()

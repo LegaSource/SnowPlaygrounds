@@ -42,8 +42,12 @@ namespace SnowPlaygrounds.Patches
         [HarmonyPostfix]
         private static void SecondaryUsePerformed(ref PlayerControllerB __instance)
         {
-            Snowman snowman = __instance.GetComponentInChildren<Snowman>();
-            snowman?.ExitSnowman();
+            if (__instance == GameNetworkManager.Instance.localPlayerController)
+            {
+                Snowman snowman = __instance.GetComponentInChildren<Snowman>();
+                if (snowman != null && snowman.hidingPlayer != null && snowman.hidingPlayer == __instance)
+                    snowman.ExitSnowman();
+            }
         }
 
         [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DiscardHeldObject))]

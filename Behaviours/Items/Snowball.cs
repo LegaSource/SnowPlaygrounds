@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
 using System.Collections;
 using Unity.Netcode;
@@ -8,7 +9,7 @@ namespace SnowPlaygrounds.Behaviours.Items
 {
     public class Snowball : PhysicsProp
     {
-        public int currentStackedItems = ConfigManager.snowballAmount.Value;
+        public int currentStackedItems = 0;
         public Rigidbody rigidbody;
         public AudioSource snowPoof;
 
@@ -28,6 +29,8 @@ namespace SnowPlaygrounds.Behaviours.Items
                 snowPoof = GetComponent<AudioSource>();
             if (snowPoof == null)
                 SnowPlaygrounds.mls.LogError("SnowPoof is not assigned and could not be found.");
+
+            currentStackedItems = ConfigManager.snowballAmount.Value;
         }
 
         public override void Update()
@@ -169,6 +172,7 @@ namespace SnowPlaygrounds.Behaviours.Items
 
             if (HandleEnemyHit(other)) return;
             if (HandlePlayerHit(other)) return;
+            if (HandleSnowmanHit(other)) return;
         }
 
         private bool HandleEnemyHit(Collider other)
@@ -190,6 +194,21 @@ namespace SnowPlaygrounds.Behaviours.Items
             {
                 Vector3 force = (player.transform.position - throwingPlayer.transform.position).normalized * ConfigManager.snowballPushForce.Value;
                 HitPlayerServerRpc((int)player.playerClientId, force, other.ClosestPoint(transform.position));
+                FinalizeHit();
+                return true;
+            }
+            return false;
+        }
+
+        private bool HandleSnowmanHit(Collider other)
+        {
+            Snowman snowman = other.GetComponent<Snowman>();
+            if (snowman != null)
+            {
+                if (snowman.hidingPlayer != null)
+                    snowman.ExitSnowmanServerRpc((int)snowman.hidingPlayer.playerClientId);
+                else
+                    SnowPlaygroundsNetworkManager.Instance.DestroySnowmanServerRpc(snowman.GetComponent<NetworkObject>());
                 FinalizeHit();
                 return true;
             }

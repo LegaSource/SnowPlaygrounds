@@ -48,9 +48,7 @@ namespace SnowPlaygrounds.Patches
                 if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                 {
                     GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowmanObj, hit.point + Vector3.down * 0.5f, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform);
-                    NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
-                    networkObject.Spawn(true);
-                    SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanClientRpc(networkObject, ConfigManager.amountSnowballToBuild.Value);
+                    gameObject.GetComponent<NetworkObject>().Spawn(true);
                 }
             }
         }

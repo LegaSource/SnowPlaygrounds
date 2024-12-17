@@ -42,7 +42,7 @@ namespace SnowPlaygrounds.Managers
         }
 
         [ClientRpc]
-        private void DestroyObjectClientRpc(NetworkObjectReference obj)
+        public void DestroyObjectClientRpc(NetworkObjectReference obj)
         {
             if (obj.TryGet(out var networkObject))
             {
@@ -50,6 +50,19 @@ namespace SnowPlaygrounds.Managers
                 if (grabbableObject is Snowball snowball)
                     snowball.isThrown = true;
                 grabbableObject.DestroyObjectInHand(grabbableObject.playerHeldBy);
+            }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void DestroySnowmanServerRpc(NetworkObjectReference obj) => DestroySnowmanClientRpc(obj);
+
+        [ClientRpc]
+        public void DestroySnowmanClientRpc(NetworkObjectReference obj)
+        {
+            if (obj.TryGet(out var networkObject))
+            {
+                Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
+                Destroy(snowman.gameObject);
             }
         }
     }
