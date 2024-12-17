@@ -1,5 +1,6 @@
 ﻿using HarmonyLib;
 using SnowPlaygrounds.Managers;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -18,6 +19,18 @@ namespace SnowPlaygrounds.Patches
                 gameObject.GetComponent<NetworkObject>().Spawn();
                 SnowPlaygrounds.mls.LogInfo("Spawning SnowPlaygroundsNetworkManager");
             }
+        }
+
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.EndOfGame))]
+        [HarmonyPostfix]
+        public static void EndOfGame(ref StartOfRound __instance)
+        {
+            if (!__instance.IsServer) return;
+
+            foreach (GameObject snowballDecal in SnowPlaygrounds.snowballDecals)
+                Object.Destroy(snowballDecal);
+
+            SnowPlaygrounds.snowballDecals.Clear();
         }
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnDisable))]

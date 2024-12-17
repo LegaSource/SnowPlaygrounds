@@ -148,11 +148,12 @@ namespace SnowPlaygrounds.Behaviours.Items
         [ClientRpc]
         public void ApplyDecalClientRpc(Vector3 point, Vector3 normal)
         {
-            GameObject decal = Instantiate(SnowPlaygrounds.snowballDecal);
-            decal.transform.position = point + normal * 0.01f;
-            decal.transform.forward = normal;
+            GameObject snowballDecal = Instantiate(SnowPlaygrounds.snowballDecal);
+            snowballDecal.transform.position = point + normal * 0.01f;
+            snowballDecal.transform.forward = normal;
+            SnowPlaygrounds.snowballDecals.Add(snowballDecal);
 
-            SnowballImpact(decal.transform.position, Quaternion.LookRotation(normal));
+            SnowballImpact(snowballDecal.transform.position, Quaternion.LookRotation(normal));
 
             StartCoroutine(DestroyCoroutine());
         }

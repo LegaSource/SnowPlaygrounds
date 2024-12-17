@@ -20,7 +20,7 @@ namespace SnowPlaygrounds
     {
         private const string modGUID = "Lega.SnowPlaygrounds";
         private const string modName = "Snow Playgrounds";
-        private const string modVersion = "1.0.2";
+        private const string modVersion = "1.0.3";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         private readonly static AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -38,6 +38,7 @@ namespace SnowPlaygrounds
 
         // Materials
         public static GameObject snowballDecal;
+        public static HashSet<GameObject> snowballDecals = new HashSet<GameObject>();
         public static Material frozenShader;
 
         // Particles
