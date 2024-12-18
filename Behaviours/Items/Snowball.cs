@@ -11,7 +11,6 @@ namespace SnowPlaygrounds.Behaviours.Items
     {
         public int currentStackedItems = 0;
         public Rigidbody rigidbody;
-        public AudioSource snowPoof;
 
         public bool isThrown = false;
         public PlayerControllerB throwingPlayer;
@@ -24,11 +23,6 @@ namespace SnowPlaygrounds.Behaviours.Items
                 rigidbody = GetComponent<Rigidbody>();
             if (rigidbody == null)
                 SnowPlaygrounds.mls.LogError("Rigidbody is not assigned and could not be found in children.");
-
-            if (snowPoof == null)
-                snowPoof = GetComponent<AudioSource>();
-            if (snowPoof == null)
-                SnowPlaygrounds.mls.LogError("SnowPoof is not assigned and could not be found.");
 
             currentStackedItems = ConfigManager.snowballAmount.Value;
         }
@@ -52,10 +46,10 @@ namespace SnowPlaygrounds.Behaviours.Items
         [ClientRpc]
         public void DropSnowballClientRpc(int playerId, NetworkObjectReference obj)
         {
-            Snowball snowball = InitializeSnowballToThrow(obj);
+            PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
+            Snowball snowball = InitializeSnowballToThrow(obj, player);
             if (snowball != null)
             {
-                PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
                 if (player.isInElevator)
                     snowball.transform.SetParent(player.playersManager.elevatorTransform, worldPositionStays: true);
 
@@ -76,7 +70,6 @@ namespace SnowPlaygrounds.Behaviours.Items
             Snowball snowball = InitializeSnowballToThrow(obj);
             if (snowball != null)
             {
-
                 Vector3 throwDirection = snowball.throwingPlayer.gameplayCamera.transform.forward;
                 // L'angle ne doit pas être trop bas
                 float minY = -0.07f;
@@ -111,7 +104,7 @@ namespace SnowPlaygrounds.Behaviours.Items
             return networkObject;
         }
 
-        public Snowball InitializeSnowballToThrow(NetworkObjectReference obj)
+        public Snowball InitializeSnowballToThrow(NetworkObjectReference obj, PlayerControllerB player = null)
         {
             Snowball snowball = null;
             if (obj.TryGet(out var networkObject))
@@ -119,7 +112,7 @@ namespace SnowPlaygrounds.Behaviours.Items
                 snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as Snowball;
                 snowball.Start();
                 snowball.isThrown = true;
-                snowball.throwingPlayer = playerHeldBy;
+                snowball.throwingPlayer = player ?? playerHeldBy;
                 if (snowball.isHeld)
                     snowball.throwingPlayer.DiscardHeldObject();
                 // Fixer la position de la boule de neige
@@ -135,27 +128,12 @@ namespace SnowPlaygrounds.Behaviours.Items
             {
                 if (Physics.Raycast(transform.position, Vector3.down, out RaycastHit hitDown, 0.25f, 605030721, QueryTriggerInteraction.Collide))
                 {
-                    ApplyDecalServerRpc(hitDown.point, hitDown.normal);
+                    SPUtilities.ApplyDecal(hitDown.point, hitDown.normal);
+                    StartCoroutine(DestroyCoroutine());
                     break;
                 }
                 yield return null;
             }
-        }
-
-        [ServerRpc(RequireOwnership = false)]
-        public void ApplyDecalServerRpc(Vector3 point, Vector3 normal) => ApplyDecalClientRpc(point, normal);
-
-        [ClientRpc]
-        public void ApplyDecalClientRpc(Vector3 point, Vector3 normal)
-        {
-            GameObject snowballDecal = Instantiate(SnowPlaygrounds.snowballDecal);
-            snowballDecal.transform.position = point + normal * 0.01f;
-            snowballDecal.transform.forward = normal;
-            SnowPlaygrounds.snowballDecals.Add(snowballDecal);
-
-            SnowballImpact(snowballDecal.transform.position, Quaternion.LookRotation(normal));
-
-            StartCoroutine(DestroyCoroutine());
         }
 
         public IEnumerator DestroyCoroutine()
@@ -231,7 +209,7 @@ namespace SnowPlaygrounds.Behaviours.Items
             if (enemyObject.TryGet(out NetworkObject networkObject))
             {
                 PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-                SnowballImpact(position, player.transform.rotation);
+                SPUtilities.SnowballImpact(position, player.transform.rotation);
 
                 EnemyAI enemy = networkObject.gameObject.GetComponentInChildren<EnemyAI>();
                 if (enemy != null)
@@ -246,22 +224,13 @@ namespace SnowPlaygrounds.Behaviours.Items
         public void HitPlayerClientRpc(int playerId, Vector3 force, Vector3 position)
         {
             PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-            SnowballImpact(position, player.transform.rotation);
+            SPUtilities.SnowballImpact(position, player.transform.rotation);
 
             if (GameNetworkManager.Instance.localPlayerController == player)
             {
                 player.thisController.Move(force);
                 HUDManager.Instance.flashFilter = Mathf.Min(1f, HUDManager.Instance.flashFilter + 0.4f);
             }
-        }
-
-        public void SnowballImpact(Vector3 position, Quaternion rotation)
-        {
-            snowPoof.Play();
-
-            GameObject particleObj = Instantiate(SnowPlaygrounds.snowballParticle, position, rotation);
-            ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
-            Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
         }
 
         [ServerRpc(RequireOwnership = false)]

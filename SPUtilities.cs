@@ -2,6 +2,7 @@
 using SnowPlaygrounds.Behaviours;
 using SnowPlaygrounds.Patches;
 using System.Collections;
+using Unity.Netcode;
 using UnityEngine;
 
 namespace SnowPlaygrounds
@@ -41,6 +42,32 @@ namespace SnowPlaygrounds
                 player.StopCoroutine(targetableCoroutine);
             EnemyAIPatch.isTargetable = false;
 
+        }
+
+        public static void ApplyDecal(Vector3 point, Vector3 normal)
+        {
+            GameObject snowballDecal = Object.Instantiate(SnowPlaygrounds.snowballDecal);
+            snowballDecal.transform.position = point + normal * 0.01f;
+            snowballDecal.transform.forward = normal;
+            SnowPlaygrounds.snowballDecals.Add(snowballDecal);
+
+            SnowballImpact(snowballDecal.transform.position, Quaternion.LookRotation(normal));
+        }
+
+        public static void SnowballImpact(Vector3 position, Quaternion rotation)
+        {
+            PlaySnowPoof(position);
+
+            GameObject particleObj = Object.Instantiate(SnowPlaygrounds.snowballParticle, position, rotation);
+            ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
+            Object.Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
+        }
+
+        public static void PlaySnowPoof(Vector3 position)
+        {
+            GameObject audioObject = Object.Instantiate(SnowPlaygrounds.snowmanAudio, position, Quaternion.identity);
+            AudioSource audioSource = audioObject.GetComponent<AudioSource>();
+            Object.Destroy(audioObject, audioSource.clip.length);
         }
     }
 }

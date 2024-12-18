@@ -30,7 +30,7 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         {
             if (currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value)
                 BuildSnowman();
-            else
+            else if (hidingPlayer == null)
                 EnterSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
         }
 
@@ -77,8 +77,9 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         public void EnterSnowmanClientRpc(int playerId)
         {
             PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-
             player.DropAllHeldItems();
+
+            snowmanTrigger.interactable = false;
 
             isPlayerHiding = true;
             hidingPlayer = player;
@@ -135,23 +136,16 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
 
         public override void OnDestroy()
         {
-            PlaySnowParticle();
-            PlaySnowPoof();
+            PlaySnowmanParticle();
+            SPUtilities.PlaySnowPoof(transform.position);
             base.OnDestroy();
         }
 
-        public void PlaySnowParticle()
+        public void PlaySnowmanParticle()
         {
             GameObject particleObj = Instantiate(SnowPlaygrounds.snowmanParticle, transform.position + Vector3.up * 2.5f, Quaternion.identity);
             ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
             Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
-        }
-
-        public void PlaySnowPoof()
-        {
-            GameObject audioObject = Object.Instantiate(SnowPlaygrounds.snowmanAudio, transform.position + Vector3.up * 2.5f, Quaternion.identity);
-            AudioSource audioSource = audioObject.GetComponent<AudioSource>();
-            Destroy(audioObject, audioSource.clip.length);
         }
 
         private void OnTriggerEnter(Collider other)

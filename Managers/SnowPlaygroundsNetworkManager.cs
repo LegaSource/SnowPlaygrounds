@@ -1,4 +1,5 @@
-﻿using SnowPlaygrounds.Behaviours.Items;
+﻿using GameNetcodeStuff;
+using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using Unity.Netcode;
 using UnityEngine;
@@ -41,18 +42,6 @@ namespace SnowPlaygrounds.Managers
             }
         }
 
-        [ClientRpc]
-        public void DestroyObjectClientRpc(NetworkObjectReference obj)
-        {
-            if (obj.TryGet(out var networkObject))
-            {
-                GrabbableObject grabbableObject = networkObject.gameObject.GetComponentInChildren<GrabbableObject>();
-                if (grabbableObject is Snowball snowball)
-                    snowball.isThrown = true;
-                grabbableObject.DestroyObjectInHand(grabbableObject.playerHeldBy);
-            }
-        }
-
         [ServerRpc(RequireOwnership = false)]
         public void DestroySnowmanServerRpc(NetworkObjectReference obj) => DestroySnowmanClientRpc(obj);
 
@@ -63,6 +52,18 @@ namespace SnowPlaygrounds.Managers
             {
                 Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
                 Destroy(snowman.gameObject);
+            }
+        }
+
+        [ClientRpc]
+        public void DestroyObjectClientRpc(NetworkObjectReference obj)
+        {
+            if (obj.TryGet(out var networkObject))
+            {
+                GrabbableObject grabbableObject = networkObject.gameObject.GetComponentInChildren<GrabbableObject>();
+                if (grabbableObject is Snowball snowball)
+                    snowball.isThrown = true;
+                grabbableObject.DestroyObjectInHand(grabbableObject.playerHeldBy);
             }
         }
     }

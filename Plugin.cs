@@ -12,6 +12,7 @@ using SnowPlaygrounds.Behaviours.Items;
 using LethalLib.Extras;
 using System.Collections.Generic;
 using SnowPlaygrounds.Patches;
+using SnowPlaygrounds.Patches.ModsPatches;
 
 namespace SnowPlaygrounds
 {
@@ -20,7 +21,7 @@ namespace SnowPlaygrounds
     {
         private const string modGUID = "Lega.SnowPlaygrounds";
         private const string modName = "Snow Playgrounds";
-        private const string modVersion = "1.0.3";
+        private const string modVersion = "1.0.4";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         private readonly static AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -67,6 +68,7 @@ namespace SnowPlaygrounds
             harmony.PatchAll(typeof(RoundManagerPatch));
             harmony.PatchAll(typeof(PlayerControllerBPatch));
             harmony.PatchAll(typeof(EnemyAIPatch));
+            PatchOtherMods(harmony);
         }
 
         public static void LoadManager()
@@ -163,5 +165,17 @@ namespace SnowPlaygrounds
 
         public static void LoadShaders()
             => frozenShader = bundle.LoadAsset<Material>("Assets/Shaders/FrozenMaterial.mat");
+
+        public static void PatchOtherMods(Harmony harmony)
+        {
+            Type shipInventoryPatchClass = Type.GetType("ShipInventory.Helpers.ItemManager, ShipInventory");
+            if (shipInventoryPatchClass != null)
+            {
+                harmony.Patch(
+                    AccessTools.Method(shipInventoryPatchClass, "StoreItem"),
+                    prefix: new HarmonyMethod(typeof(ShipInventoryPatch).GetMethod("PreStoreItem"))
+                );
+            }
+        }
     }
 }

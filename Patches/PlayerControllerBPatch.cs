@@ -64,5 +64,25 @@ namespace SnowPlaygrounds.Patches
             }
             return true;
         }
+
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DropAllHeldItems))]
+        [HarmonyPrefix]
+        private static void PreDropAllObjects(ref PlayerControllerB __instance)
+        {
+            bool isSnowballThrown = false;
+
+            for (int i = 0; i < __instance.ItemSlots.Length; i++)
+            {
+                GrabbableObject grabbableObject = __instance.ItemSlots[i];
+                if (grabbableObject != null && grabbableObject is Snowball)
+                {
+                    __instance.DestroyItemInSlot(i);
+                    isSnowballThrown = true;
+                }
+            }
+
+            if (isSnowballThrown && Physics.Raycast(__instance.transform.position + Vector3.up, Vector3.down, out RaycastHit hitDown, 2f, 605030721, QueryTriggerInteraction.Collide))
+                SPUtilities.ApplyDecal(hitDown.point, hitDown.normal);
+        }
     }
 }
