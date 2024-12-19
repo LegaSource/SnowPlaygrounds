@@ -4,6 +4,9 @@ namespace SnowPlaygrounds.Managers
 {
     public class ConfigManager
     {
+        // _GLOBAL_
+        public static ConfigEntry<bool> anyLevel;
+        public static ConfigEntry<string> spawnLevels;
         // SNOW PILE
         public static ConfigEntry<bool> isSnowPileInside;
         public static ConfigEntry<int> minSnowPileInside;
@@ -29,6 +32,9 @@ namespace SnowPlaygrounds.Managers
 
         public static void Load()
         {
+            // _GLOBAL_
+            anyLevel = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Any level", true, "If true, the hazards can spawn on any level");
+            spawnLevels = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn levels", "TitanLevel,DineLevel,RendLevel", "Name of the levels where the hazards can spawn");
             // SNOW PILE
             isSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Can spawn inside", true, $"Can {Constants.SNOW_PILE} spawn inside");
             minSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Min spawn inside", 5, $"Min {Constants.SNOW_PILE} to spawn");

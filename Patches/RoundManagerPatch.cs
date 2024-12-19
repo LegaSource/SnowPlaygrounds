@@ -9,9 +9,11 @@ namespace SnowPlaygrounds.Patches
     {
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnOutsideHazards))]
         [HarmonyPostfix]
-        private static void LoadNewGame(ref RoundManager __instance)
+        private static void SpawnOutsideHazards(ref RoundManager __instance)
         {
-            if (__instance.IsHost)
+            if (!__instance.IsHost) return;
+
+            if (ConfigManager.anyLevel.Value || ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name))
             {
                 if (ConfigManager.isSnowPileOutside.Value)
                     SpawnSnowPile(__instance);

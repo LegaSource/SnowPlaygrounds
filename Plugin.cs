@@ -21,7 +21,7 @@ namespace SnowPlaygrounds
     {
         private const string modGUID = "Lega.SnowPlaygrounds";
         private const string modName = "Snow Playgrounds";
-        private const string modVersion = "1.0.4";
+        private const string modVersion = "1.0.5";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         private readonly static AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -126,7 +126,12 @@ namespace SnowPlaygrounds
             NetworkPrefabs.RegisterNetworkPrefab(mapObjDef.spawnableMapObject.prefabToSpawn);
             Utilities.FixMixerGroups(mapObjDef.spawnableMapObject.prefabToSpawn);
             if (isInside)
-                MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.All, (SelectableLevel _) => animationCurveInside);
+            {
+                if (ConfigManager.anyLevel.Value)
+                    MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.All, (SelectableLevel _) => animationCurveInside);
+                else
+                    MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.None, ConfigManager.spawnLevels.Value.Split(','), (SelectableLevel _) => animationCurveInside);
+            }
 
             return mapObjDef.spawnableMapObject.prefabToSpawn;
         }

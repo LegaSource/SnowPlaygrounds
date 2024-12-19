@@ -104,10 +104,7 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         }
 
         public void ExitSnowman()
-        {
-            SPUtilities.StartTargetable(GameNetworkManager.Instance.localPlayerController, ConfigManager.snowmanSlowdownDuration.Value);
-            ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
-        }
+            => ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
 
         [ServerRpc(RequireOwnership = false)]
         public void ExitSnowmanServerRpc(int playerId) => ExitSnowmanClientRpc(playerId);
@@ -125,6 +122,8 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
                 player.gameplayCamera = playerCamera;
 
                 HUDManager.Instance.ClearControlTips();
+
+                SPUtilities.StartTargetable(GameNetworkManager.Instance.localPlayerController, ConfigManager.snowmanSlowdownDuration.Value);
 
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Enable();
                 IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Enable();
