@@ -20,17 +20,13 @@ namespace SnowPlaygrounds.Patches
             }
         }
 
+        [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
+        [HarmonyPostfix]
+        public static void StartOfGame() => SPUtilities.ClearSnowballDecals();
+
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.EndOfGame))]
         [HarmonyPostfix]
-        public static void EndOfGame(ref StartOfRound __instance)
-        {
-            if (!__instance.IsServer) return;
-
-            foreach (GameObject snowballDecal in SnowPlaygrounds.snowballDecals)
-                Object.Destroy(snowballDecal);
-
-            SnowPlaygrounds.snowballDecals.Clear();
-        }
+        public static void EndOfGame() => SPUtilities.ClearSnowballDecals();
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnDisable))]
         [HarmonyPostfix]

@@ -93,7 +93,7 @@ namespace SnowPlaygrounds
         }
 
         public void LoadItems()
-            => snowballObj = RegisterItem(typeof(Snowball), bundle.LoadAsset<Item>("Assets/Snowball/SnowballItem.asset")).spawnPrefab;
+            => snowballObj = RegisterItem(typeof(Snowball), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballItem.asset")).spawnPrefab;
 
         public Item RegisterItem(Type type, Item item)
         {
@@ -111,8 +111,8 @@ namespace SnowPlaygrounds
 
         public void LoadHazards()
         {
-            snowPileObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/SnowPile/SnowPile.prefab"), ConfigManager.isSnowPileInside.Value, ConfigManager.minSnowPileInside.Value, ConfigManager.maxSnowPileInside.Value);
-            snowmanObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/Snowman/Snowman.prefab"), ConfigManager.isSnowmanInside.Value, ConfigManager.minSnowmanInside.Value, ConfigManager.maxSnowmanInside.Value);
+            snowPileObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/SnowPile/SP_SnowPile.prefab"), ConfigManager.isSnowPileInside.Value, ConfigManager.minSnowPileInside.Value, ConfigManager.maxSnowPileInside.Value);
+            snowmanObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/Snowman/SP_Snowman.prefab"), ConfigManager.isSnowmanInside.Value, ConfigManager.minSnowmanInside.Value, ConfigManager.maxSnowmanInside.Value);
         }
 
         public GameObject RegisterHazard(GameObject gameObject, bool isInside, float minSpawn, float maxSpawn)
@@ -137,14 +137,14 @@ namespace SnowPlaygrounds
         }
 
         public static void LoadDecals()
-            => snowballDecal = bundle.LoadAsset<GameObject>("Assets/Snowball/SnowballDecal.prefab");
+            => snowballDecal = bundle.LoadAsset<GameObject>("Assets/Snowball/SP_SnowballDecal.prefab");
 
         public static void LoadParticles()
         {
             HashSet<GameObject> gameObjects = new HashSet<GameObject>
             {
-                (snowballParticle = bundle.LoadAsset<GameObject>("Assets/Snowball/SnowballParticle.prefab")),
-                (snowmanParticle = bundle.LoadAsset<GameObject>("Assets/Snowman/SnowmanParticle.prefab"))
+                (snowballParticle = bundle.LoadAsset<GameObject>("Assets/Snowball/SP_SnowballParticle.prefab")),
+                (snowmanParticle = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanParticle.prefab"))
             };
 
             foreach (GameObject gameObject in gameObjects)
@@ -158,7 +158,7 @@ namespace SnowPlaygrounds
         {
             HashSet<GameObject> gameObjects = new HashSet<GameObject>
             {
-                (snowmanAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SnowmanAudio.prefab"))
+                (snowmanAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanAudio.prefab"))
             };
 
             foreach (GameObject gameObject in gameObjects)
@@ -169,7 +169,7 @@ namespace SnowPlaygrounds
         }
 
         public static void LoadShaders()
-            => frozenShader = bundle.LoadAsset<Material>("Assets/Shaders/FrozenMaterial.mat");
+            => frozenShader = bundle.LoadAsset<Material>("Assets/Shaders/SP_FrozenMaterial.mat");
 
         public static void PatchOtherMods(Harmony harmony)
         {

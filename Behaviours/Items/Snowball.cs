@@ -9,6 +9,7 @@ namespace SnowPlaygrounds.Behaviours.Items
 {
     public class Snowball : PhysicsProp
     {
+        public bool isInitialized = false;
         public int currentStackedItems = 0;
         public Rigidbody rigidbody;
 
@@ -17,6 +18,9 @@ namespace SnowPlaygrounds.Behaviours.Items
 
         public override void Start()
         {
+            if (isInitialized) return;
+            else isInitialized = true;
+
             base.Start();
 
             if (rigidbody == null)
@@ -30,7 +34,7 @@ namespace SnowPlaygrounds.Behaviours.Items
         public override void Update()
         {
             if (!isThrown)
-                base.Update(); ;
+                base.Update();
         }
 
         public override void ItemActivate(bool used, bool buttonDown = true)

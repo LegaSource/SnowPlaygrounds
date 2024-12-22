@@ -8,10 +8,9 @@ namespace SnowPlaygrounds
         public const string GLOBAL = "_Global_";
         // Items
         public const string SNOWBALL = "Snowball";
-        public const string SNOWBALL_DECAL = "SnowballDecal";
         // Map objects
         public const string SNOW_PILE = "Snow Pile";
         public const string SNOWMAN = "Snowman";
-        public static Vector3 SNOWMAN_SCALE = new(2.5f, 2.5f, 2.5f);
+        public static Vector3 SNOWMAN_SCALE = new(2f, 2f, 2f);
     }
 }

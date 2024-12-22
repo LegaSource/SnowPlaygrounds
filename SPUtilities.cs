@@ -2,6 +2,7 @@
 using SnowPlaygrounds.Behaviours;
 using SnowPlaygrounds.Patches;
 using System.Collections;
+using System.Linq;
 using UnityEngine;
 
 namespace SnowPlaygrounds
@@ -67,6 +68,14 @@ namespace SnowPlaygrounds
             GameObject audioObject = Object.Instantiate(SnowPlaygrounds.snowmanAudio, position, Quaternion.identity);
             AudioSource audioSource = audioObject.GetComponent<AudioSource>();
             Object.Destroy(audioObject, audioSource.clip.length);
+        }
+
+        public static void ClearSnowballDecals()
+        {
+            foreach (GameObject snowballDecal in SnowPlaygrounds.snowballDecals.ToList())
+                Object.Destroy(snowballDecal);
+
+            SnowPlaygrounds.snowballDecals.Clear();
         }
     }
 }

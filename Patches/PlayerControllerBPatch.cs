@@ -56,7 +56,7 @@ namespace SnowPlaygrounds.Patches
         {
             if (__instance.currentlyHeldObjectServer is Snowball snowball && !snowball.isThrown)
             {
-                if (__instance.isCrouching)
+                if (StartOfRound.Instance.shipHasLanded && __instance.isCrouching)
                     SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc(snowball.GetComponent<NetworkObject>(), __instance.transform.position + Vector3.up * 1.5f);
                 else
                     snowball.DropSnowballServerRpc((int)__instance.playerClientId);
