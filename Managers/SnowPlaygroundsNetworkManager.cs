@@ -21,7 +21,7 @@ namespace SnowPlaygrounds.Managers
                 Snowball snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as Snowball;
                 if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                 {
-                    GameObject gameObject = Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, rotation.y, rotation.z), RoundManager.Instance.mapPropsContainer.transform);
+                    GameObject gameObject = Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, rotation.eulerAngles.y, rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
                     gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * snowball.currentStackedItems;
                     NetworkObject spawnedNetworkObject = gameObject.GetComponent<NetworkObject>();
                     spawnedNetworkObject.Spawn(true);
@@ -42,7 +42,7 @@ namespace SnowPlaygrounds.Managers
                 snowman.RefreshHoverTip();
 
                 PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-                if (Physics.Raycast(player.gameplayCamera.transform.position + Vector3.forward * 0.5f, Vector3.down, out RaycastHit hitInfo, 80f, 1342179585, QueryTriggerInteraction.Ignore))
+                if (Physics.Raycast(player.gameplayCamera.transform.position + player.gameplayCamera.transform.forward, Vector3.down, out RaycastHit hitInfo, 80f, 1342179585, QueryTriggerInteraction.Ignore))
                 {
                     PlayerPhysicsRegion physicsRegion = hitInfo.collider.gameObject.transform.GetComponentInChildren<PlayerPhysicsRegion>();
                     if (physicsRegion != null && physicsRegion.allowDroppingItems && physicsRegion.itemDropCollider.ClosestPoint(hitInfo.point) == hitInfo.point)
@@ -51,7 +51,7 @@ namespace SnowPlaygrounds.Managers
                         {
                             snowman.transform.SetParent(physicsRegion.physicsTransform);
                             snowman.transform.localPosition = physicsRegion.physicsTransform.InverseTransformPoint(hitInfo.point + Vector3.up * 0.04f + physicsRegion.addPositionOffsetToItems);
-                            snowman.transform.rotation = Quaternion.Euler(0f, player.transform.rotation.y, player.transform.rotation.z);
+                            snowman.transform.rotation = Quaternion.Euler(0f, player.transform.rotation.eulerAngles.y, player.transform.rotation.eulerAngles.z);
                         }
                     }
                 }

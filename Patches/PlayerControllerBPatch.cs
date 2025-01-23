@@ -62,8 +62,8 @@ namespace SnowPlaygrounds.Patches
                     SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc(
                         (int)__instance.playerClientId,
                         snowball.GetComponent<NetworkObject>(),
-                        __instance.transform.position + Vector3.up * 1.5f,
-                        __instance.gameplayCamera.transform.rotation);
+                        __instance.gameplayCamera.transform.position + __instance.gameplayCamera.transform.forward,
+                        __instance.transform.rotation);
                 }
                 else
                 {
