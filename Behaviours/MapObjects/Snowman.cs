@@ -208,7 +208,11 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
                 {
                     if (hidingPlayer != null && hidingPlayer == GameNetworkManager.Instance.localPlayerController)
                         ExitSnowman();
-                    SPUtilities.StartFreezeEnemy(enemy, ConfigManager.snowmanSlowdownDuration.Value, ConfigManager.snowmanSlowdownFactor.Value);
+
+                    if (enemy is FrostbiteAI frostbite)
+                        frostbite.HitFrostbite();
+                    else
+                        SPUtilities.StartFreezeEnemy(enemy, ConfigManager.snowmanSlowdownDuration.Value, ConfigManager.snowmanSlowdownFactor.Value);
                 }
             }
         }

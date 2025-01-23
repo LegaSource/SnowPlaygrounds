@@ -2,6 +2,7 @@
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
 using System;
+using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -183,17 +184,17 @@ namespace SnowPlaygrounds.Behaviours.Enemies
             SwitchToBehaviourServerRpc((int)State.WANDERING);
         }
 
-        [ServerRpc(RequireOwnership = false)]
-        public void HitSnowballServerRpc(int playerId, Vector3 position)
-            => HitSnowballClientRpc(playerId, position);
-
-        [ClientRpc]
-        public void HitSnowballClientRpc(int playerId, Vector3 position)
+        public void HitFrostbite()
         {
-            PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-            SPUtilities.SnowballImpact(position, player.transform.rotation);
-            
             currentHitHP += ConfigManager.frostbiteHitIncrement.Value;
+            StartCoroutine(HitCoroutine());
+        }
+
+        private IEnumerator HitCoroutine()
+        {
+            CustomPassManager.SetupCustomPassForEnemy(this);
+            yield return new WaitForSeconds(0.2f);
+            CustomPassManager.RemoveAura(this);
         }
 
         public override void HitEnemy(int force = 1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)

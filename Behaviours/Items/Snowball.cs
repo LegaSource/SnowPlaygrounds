@@ -175,10 +175,7 @@ namespace SnowPlaygrounds.Behaviours.Items
             EnemyAICollisionDetect enemyCollision = other.GetComponent<EnemyAICollisionDetect>();
             if (enemyCollision == null) return false;
 
-            if (enemyCollision.mainScript is FrostbiteAI frostbiteAI)
-                frostbiteAI.HitSnowballServerRpc((int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
-            else
-                FreezeEnemyServerRpc(enemyCollision.mainScript.NetworkObject, (int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
+            FreezeEnemyServerRpc(enemyCollision.mainScript.NetworkObject, (int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
 
             FinalizeHit();
             return true;
@@ -231,7 +228,12 @@ namespace SnowPlaygrounds.Behaviours.Items
 
                 EnemyAI enemy = networkObject.gameObject.GetComponentInChildren<EnemyAI>();
                 if (enemy != null)
-                    SPUtilities.StartFreezeEnemy(enemy, ConfigManager.snowballSlowdownDuration.Value, ConfigManager.snowballSlowdownFactor.Value);
+                {
+                    if (enemy is FrostbiteAI frostbite)
+                        frostbite.HitFrostbite();
+                    else
+                        SPUtilities.StartFreezeEnemy(enemy, ConfigManager.snowballSlowdownDuration.Value, ConfigManager.snowballSlowdownFactor.Value);
+                }
             }
         }
 
