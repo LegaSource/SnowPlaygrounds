@@ -1,5 +1,8 @@
 ﻿using HarmonyLib;
+using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
+using System.Collections.Generic;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -7,6 +10,14 @@ namespace SnowPlaygrounds.Patches
 {
     internal class RoundManagerPatch
     {
+        [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnMapObjects))]
+        [HarmonyPostfix]
+        private static void SpawnInsideHazards(ref RoundManager __instance)
+        {
+            if (!__instance.IsHost) return;
+            SPUtilities.Shuffle(__instance.insideAINodes);
+        }
+
         [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnOutsideHazards))]
         [HarmonyPostfix]
         private static void SpawnOutsideHazards(ref RoundManager __instance)
@@ -15,6 +26,8 @@ namespace SnowPlaygrounds.Patches
 
             if (ConfigManager.anyLevel.Value || ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name))
             {
+                SPUtilities.Shuffle(__instance.outsideAINodes);
+
                 if (ConfigManager.isSnowPileOutside.Value)
                     SpawnSnowPile(__instance);
                 if (ConfigManager.isSnowmanOutside.Value)
@@ -49,9 +62,26 @@ namespace SnowPlaygrounds.Patches
                 position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(position, 10f, default, random) + Vector3.up;
                 if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
                 {
-                    GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowmanObj, hit.point + Vector3.down * 0.5f, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform);
+                    GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform);
                     gameObject.GetComponent<NetworkObject>().Spawn(true);
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.GeneratedFloorPostProcessing))]
+        [HarmonyPostfix]
+        private static void AddFakeSnowman(ref RoundManager __instance)
+        {
+            if (!__instance.IsHost) return;
+
+            if (ConfigManager.anyLevel.Value || ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name))
+            {
+                SnowPlaygrounds.snowmen.AddRange(Object.FindObjectsOfType<Snowman>());
+
+                System.Random random = new System.Random();
+                List<Snowman> randomSnowmen = SnowPlaygrounds.snowmen.OrderBy(s => random.Next()).Take(random.Next(ConfigManager.minFakeSnowman.Value, ConfigManager.maxFakeSnowman.Value)).ToList();
+                foreach (Snowman snowman in randomSnowmen)
+                    SnowPlaygroundsNetworkManager.Instance.AddFakeSnowmanClientRpc(snowman.GetComponent<NetworkObject>());
             }
         }
     }

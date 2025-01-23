@@ -36,6 +36,7 @@ namespace SnowPlaygrounds.Managers
         public static void SetupCustomPassForEnemy(EnemyAI enemy)
         {
             if (frozenEnemies.ContainsKey(enemy)) return;
+            if (ConfigManager.frozenShaderExclusions.Value.Contains(enemy.enemyType?.enemyName)) return;
 
             LayerMask frozenLayer = 524288;
             List<Renderer> enemyRenderers = enemy.GetComponentsInChildren<Renderer>().Where(r => (frozenLayer & (1 << r.gameObject.layer)) != 0).ToList();

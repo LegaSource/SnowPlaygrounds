@@ -13,6 +13,7 @@ using LethalLib.Extras;
 using System.Collections.Generic;
 using SnowPlaygrounds.Patches;
 using SnowPlaygrounds.Patches.ModsPatches;
+using SnowPlaygrounds.Behaviours.MapObjects;
 
 namespace SnowPlaygrounds
 {
@@ -21,7 +22,7 @@ namespace SnowPlaygrounds
     {
         private const string modGUID = "Lega.SnowPlaygrounds";
         private const string modName = "Snow Playgrounds";
-        private const string modVersion = "1.0.5";
+        private const string modVersion = "1.0.7";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         private readonly static AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -30,12 +31,19 @@ namespace SnowPlaygrounds
 
         public static GameObject managerPrefab = NetworkPrefabs.CreateNetworkPrefab("SnowPlaygroundsNetworkManager");
 
+        public static bool isSellBodies = false;
+
         // Items
         public static GameObject snowballObj;
+        public static GameObject snowballEnemyObj;
 
         // Hazards
         public static GameObject snowPileObj;
         public static GameObject snowmanObj;
+        public static List<Snowman> snowmen = new List<Snowman>(); // Valorisé et utilisé seulement côté serveur
+
+        // Enemies
+        public static EnemyType frostbiteEnemy;
 
         // Materials
         public static GameObject snowballDecal;
@@ -48,6 +56,7 @@ namespace SnowPlaygrounds
 
         // Audios
         public static GameObject snowmanAudio;
+        public static GameObject jumpscareAudio;
 
         public void Awake()
         {
@@ -59,6 +68,7 @@ namespace SnowPlaygrounds
             NetcodePatcher();
             LoadItems();
             LoadHazards();
+            LoadEnemies();
             LoadDecals();
             LoadParticles();
             LoadAudios();
@@ -93,7 +103,10 @@ namespace SnowPlaygrounds
         }
 
         public void LoadItems()
-            => snowballObj = RegisterItem(typeof(Snowball), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballItem.asset")).spawnPrefab;
+        {
+            snowballObj = RegisterItem(typeof(Snowball), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballItem.asset")).spawnPrefab;
+            snowballEnemyObj = RegisterItem(typeof(SnowballEnemy), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballEnemyItem.asset")).spawnPrefab;
+        }
 
         public Item RegisterItem(Type type, Item item)
         {
@@ -136,6 +149,16 @@ namespace SnowPlaygrounds
             return mapObjDef.spawnableMapObject.prefabToSpawn;
         }
 
+        public static void LoadEnemies()
+        {
+            frostbiteEnemy = bundle.LoadAsset<EnemyType>("Assets/Frostbite/SP_FrostbiteEnemy.asset");
+            NetworkPrefabs.RegisterNetworkPrefab(frostbiteEnemy.enemyPrefab);
+            if (ConfigManager.anyLevel.Value)
+                Enemies.RegisterEnemy(frostbiteEnemy, ConfigManager.frostbiteRarity.Value, Levels.LevelTypes.All, null, null);
+            else
+                Enemies.RegisterEnemy(frostbiteEnemy, ConfigManager.frostbiteRarity.Value, Levels.LevelTypes.None, ConfigManager.spawnLevels.Value.Split(','), null, null);
+        }
+
         public static void LoadDecals()
             => snowballDecal = bundle.LoadAsset<GameObject>("Assets/Snowball/SP_SnowballDecal.prefab");
 
@@ -158,7 +181,8 @@ namespace SnowPlaygrounds
         {
             HashSet<GameObject> gameObjects = new HashSet<GameObject>
             {
-                (snowmanAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanAudio.prefab"))
+                (snowmanAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanAudio.prefab")),
+                (jumpscareAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_JumpscareAudio.prefab"))
             };
 
             foreach (GameObject gameObject in gameObjects)
@@ -181,6 +205,8 @@ namespace SnowPlaygrounds
                     prefix: new HarmonyMethod(typeof(ShipInventoryPatch).GetMethod("PreStoreItem"))
                 );
             }
+
+            isSellBodies = Type.GetType("SellBodies.PluginInfo, SellBodies") != null;
         }
     }
 }

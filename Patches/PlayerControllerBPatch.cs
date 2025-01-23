@@ -3,6 +3,7 @@ using HarmonyLib;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
+using System.Text;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -57,9 +58,17 @@ namespace SnowPlaygrounds.Patches
             if (__instance.currentlyHeldObjectServer is Snowball snowball && !snowball.isThrown)
             {
                 if (StartOfRound.Instance.shipHasLanded && __instance.isCrouching)
-                    SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc(snowball.GetComponent<NetworkObject>(), __instance.transform.position + Vector3.up * 1.5f);
+                {
+                    SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc(
+                        (int)__instance.playerClientId,
+                        snowball.GetComponent<NetworkObject>(),
+                        __instance.transform.position + Vector3.up * 1.5f,
+                        __instance.gameplayCamera.transform.rotation);
+                }
                 else
+                {
                     snowball.DropSnowballServerRpc((int)__instance.playerClientId);
+                }
                 return false;
             }
             return true;
@@ -83,6 +92,52 @@ namespace SnowPlaygrounds.Patches
 
             if (isSnowballThrown && Physics.Raycast(__instance.transform.position + Vector3.up, Vector3.down, out RaycastHit hitDown, 2f, 605030721, QueryTriggerInteraction.Collide))
                 SPUtilities.ApplyDecal(hitDown.point, hitDown.normal);
+        }
+
+        [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SetHoverTipAndCurrentInteractTrigger))]
+        [HarmonyPrefix]
+        private static bool SnowmanInteractTrigger(ref PlayerControllerB __instance)
+        {
+            if (__instance.isGrabbingObjectAnimation || __instance.inSpecialMenu || __instance.quickMenuManager.isMenuOpen) return true;
+
+            __instance.interactRay = new Ray(__instance.gameplayCamera.transform.position, __instance.gameplayCamera.transform.forward);
+            if (Physics.Raycast(__instance.interactRay, out __instance.hit, __instance.grabDistance, __instance.interactableObjectsMask) && __instance.hit.collider.gameObject.layer != 8 && __instance.hit.collider.gameObject.layer != 30)
+            {
+                if (!__instance.hit.collider.tag.Equals("InteractTrigger")) return true;
+
+                Snowman snowman = __instance.hit.collider.gameObject.GetComponentInParent<Snowman>();
+                if (snowman == null) return true;
+
+                __instance.hoveringOverTrigger = snowman.snowmanTrigger;
+                if (!__instance.isHoldingInteract)
+                {
+                    __instance.cursorIcon.enabled = true;
+                    __instance.cursorIcon.sprite = snowman.snowmanTrigger.hoverIcon;
+                    __instance.cursorTip.text = snowman.snowmanTrigger.hoverTip;
+                }
+
+                FormatCursorTip(__instance);
+                return false;
+            }
+            return true;
+        }
+
+        private static void FormatCursorTip(PlayerControllerB player)
+        {
+            if (StartOfRound.Instance.localPlayerUsingController)
+            {
+                StringBuilder stringBuilder = new StringBuilder(player.cursorTip.text);
+                stringBuilder.Replace("[E]", "[X]");
+                stringBuilder.Replace("[LMB]", "[X]");
+                stringBuilder.Replace("[RMB]", "[R-Trigger]");
+                stringBuilder.Replace("[F]", "[R-Shoulder]");
+                stringBuilder.Replace("[Z]", "[L-Shoulder]");
+                player.cursorTip.text = stringBuilder.ToString();
+            }
+            else
+            {
+                player.cursorTip.text = player.cursorTip.text.Replace("[LMB]", "[E]");
+            }
         }
     }
 }

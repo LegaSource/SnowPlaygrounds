@@ -22,14 +22,23 @@ namespace SnowPlaygrounds.Patches
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.StartGame))]
         [HarmonyPostfix]
-        public static void StartOfGame() => SPUtilities.ClearSnowballDecals();
+        public static void StartOfGame()
+        {
+            SnowPlaygrounds.snowmen.Clear();
+            SPUtilities.ClearSnowballDecals();
+        }
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.EndOfGame))]
         [HarmonyPostfix]
-        public static void EndOfGame() => SPUtilities.ClearSnowballDecals();
+        public static void EndOfGame(ref StartOfRound __instance)
+        {
+            SPUtilities.DespawnSnowmanEndGame(__instance);
+            SPUtilities.ClearSnowballDecals();
+        }
 
         [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnDisable))]
         [HarmonyPostfix]
-        public static void OnDisable() => SnowPlaygroundsNetworkManager.Instance = null;
+        public static void OnDisable()
+            => SnowPlaygroundsNetworkManager.Instance = null;
     }
 }

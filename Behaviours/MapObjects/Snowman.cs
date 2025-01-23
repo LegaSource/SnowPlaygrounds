@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
 using Unity.Netcode;
@@ -18,12 +19,48 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         public bool isPlayerHiding = false;
         public PlayerControllerB hidingPlayer;
 
+        public bool isEnemyHiding = false;
+
         private void Start()
         {
             if (currentStackedSnowball == 0)
                 currentStackedSnowball = ConfigManager.amountSnowballToBuild.Value;
 
             playerCamera = GameNetworkManager.Instance.localPlayerController.gameplayCamera;
+        }
+
+        public void Update()
+        {
+            if (!isEnemyHiding) return;
+
+            Collider[] hitColliders = Physics.OverlapSphere(transform.position, 7f, StartOfRound.Instance.playersMask, QueryTriggerInteraction.Collide);
+            foreach (var hitCollider in hitColliders)
+            {
+                PlayerControllerB player = hitCollider.GetComponent<PlayerControllerB>();
+                if (player != null && player == GameNetworkManager.Instance.localPlayerController)
+                {
+                    SpawnFrostbiteServerRpc();
+                    break;
+                }
+            }
+        }
+
+        [ServerRpc(RequireOwnership = false)]
+        public void SpawnFrostbiteServerRpc()
+        {
+            SpawnFrostbiteClientRpc();
+
+            GameObject gameObject = Instantiate(SnowPlaygrounds.frostbiteEnemy.enemyPrefab, transform.position, transform.rotation);
+            gameObject.GetComponentInChildren<NetworkObject>().Spawn(true);
+            gameObject.GetComponent<FrostbiteAI>().moveTowardsDestination = true;
+        }
+
+        [ClientRpc]
+        public void SpawnFrostbiteClientRpc()
+        {
+            if (ConfigManager.isJumpscareOn.Value)
+                SPUtilities.PlayJumpscareAudio(transform.position);
+            Destroy(gameObject);
         }
 
         public void SnowmanInteraction()
@@ -56,22 +93,30 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void BuildSnowmanServerRpc(int nbSnowball) => BuildSnowmanClientRpc(nbSnowball);
+        public void BuildSnowmanServerRpc(int nbSnowball)
+            => BuildSnowmanClientRpc(nbSnowball);
 
         [ClientRpc]
         public void BuildSnowmanClientRpc(int nbSnowball)
         {
             currentStackedSnowball += nbSnowball;
-            if (currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value)
-                gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * currentStackedSnowball;
-            else
+            if (currentStackedSnowball >= ConfigManager.amountSnowballToBuild.Value)
+            {
                 gameObject.transform.localScale = Constants.SNOWMAN_SCALE;
+                if (GameNetworkManager.Instance.localPlayerController.IsServer || GameNetworkManager.Instance.localPlayerController.IsHost)
+                    SnowPlaygrounds.snowmen.Add(this);
+            }
+            else
+            {
+                gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * currentStackedSnowball;
+            }
 
             RefreshHoverTip();
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void EnterSnowmanServerRpc(int playerId) => EnterSnowmanClientRpc(playerId);
+        public void EnterSnowmanServerRpc(int playerId)
+            => EnterSnowmanClientRpc(playerId);
 
         [ClientRpc]
         public void EnterSnowmanClientRpc(int playerId)
@@ -107,7 +152,8 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
             => ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
 
         [ServerRpc(RequireOwnership = false)]
-        public void ExitSnowmanServerRpc(int playerId) => ExitSnowmanClientRpc(playerId);
+        public void ExitSnowmanServerRpc(int playerId)
+            => ExitSnowmanClientRpc(playerId);
 
         [ClientRpc]
         public void ExitSnowmanClientRpc(int playerId)
@@ -135,16 +181,8 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
 
         public override void OnDestroy()
         {
-            PlaySnowmanParticle();
-            SPUtilities.PlaySnowPoof(transform.position);
+            SPUtilities.PlaySnowmanParticle(transform.position, transform.rotation);
             base.OnDestroy();
-        }
-
-        public void PlaySnowmanParticle()
-        {
-            GameObject particleObj = Instantiate(SnowPlaygrounds.snowmanParticle, transform.position + Vector3.up * 2.5f, Quaternion.identity);
-            ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
-            Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
         }
 
         private void OnTriggerEnter(Collider other)
@@ -157,7 +195,8 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject) => FreezeEnemyClientRpc(enemyObject);
+        public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject)
+            => FreezeEnemyClientRpc(enemyObject);
 
         [ClientRpc]
         public void FreezeEnemyClientRpc(NetworkObjectReference enemyObject)

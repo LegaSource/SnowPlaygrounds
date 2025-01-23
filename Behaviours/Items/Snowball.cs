@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
 using System.Collections;
@@ -16,17 +17,19 @@ namespace SnowPlaygrounds.Behaviours.Items
         public bool isThrown = false;
         public PlayerControllerB throwingPlayer;
 
+        public Coroutine throwCooldownCoroutine;
+
         public override void Start()
         {
             if (isInitialized) return;
-            else isInitialized = true;
+            isInitialized = true;
 
             base.Start();
 
             if (rigidbody == null)
                 rigidbody = GetComponent<Rigidbody>();
             if (rigidbody == null)
-                SnowPlaygrounds.mls.LogError("Rigidbody is not assigned and could not be found in children.");
+                SnowPlaygrounds.mls.LogError("Rigidbody is not assigned and could not be found.");
 
             currentStackedItems = ConfigManager.snowballAmount.Value;
         }
@@ -41,11 +44,19 @@ namespace SnowPlaygrounds.Behaviours.Items
         {
             base.ItemActivate(used, buttonDown);
             if (buttonDown && playerHeldBy != null)
-                ThrowSnowballServerRpc();
+                throwCooldownCoroutine ??= StartCoroutine(ThrowCooldownCoroutine());
+        }
+
+        private IEnumerator ThrowCooldownCoroutine()
+        {
+            ThrowSnowballServerRpc();
+            yield return new WaitForSeconds(ConfigManager.snowballThrowCooldown.Value);
+            throwCooldownCoroutine = null;
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void DropSnowballServerRpc(int playerId) => DropSnowballClientRpc(playerId, InstantiateSnowballToThrow());
+        public void DropSnowballServerRpc(int playerId)
+            => DropSnowballClientRpc(playerId, InstantiateSnowballToThrow());
 
         [ClientRpc]
         public void DropSnowballClientRpc(int playerId, NetworkObjectReference obj)
@@ -66,7 +77,8 @@ namespace SnowPlaygrounds.Behaviours.Items
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void ThrowSnowballServerRpc() => ThrowSnowballClientRpc(InstantiateSnowballToThrow());
+        public void ThrowSnowballServerRpc()
+            => ThrowSnowballClientRpc(InstantiateSnowballToThrow());
 
         [ClientRpc]
         public void ThrowSnowballClientRpc(NetworkObjectReference obj)
@@ -160,42 +172,43 @@ namespace SnowPlaygrounds.Behaviours.Items
 
         private bool HandleEnemyHit(Collider other)
         {
-            EnemyAICollisionDetect collisionDetect = other.GetComponent<EnemyAICollisionDetect>();
-            if (collisionDetect != null)
-            {
-                FreezeEnemyServerRpc(collisionDetect.mainScript.NetworkObject, (int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
-                FinalizeHit();
-                return true;
-            }
-            return false;
+            EnemyAICollisionDetect enemyCollision = other.GetComponent<EnemyAICollisionDetect>();
+            if (enemyCollision == null) return false;
+
+            if (enemyCollision.mainScript is FrostbiteAI frostbiteAI)
+                frostbiteAI.HitSnowballServerRpc((int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
+            else
+                FreezeEnemyServerRpc(enemyCollision.mainScript.NetworkObject, (int)throwingPlayer.playerClientId, other.ClosestPoint(transform.position));
+
+            FinalizeHit();
+            return true;
         }
 
         private bool HandlePlayerHit(Collider other)
         {
             PlayerControllerB player = other.GetComponent<PlayerControllerB>();
-            if (player != null && player != throwingPlayer)
-            {
-                Vector3 force = (player.transform.position - throwingPlayer.transform.position).normalized * ConfigManager.snowballPushForce.Value;
-                HitPlayerServerRpc((int)player.playerClientId, force, other.ClosestPoint(transform.position));
-                FinalizeHit();
-                return true;
-            }
-            return false;
+            if (player == null) return false;
+            if (player == throwingPlayer) return false;
+
+            Vector3 force = (player.transform.position - throwingPlayer.transform.position).normalized * ConfigManager.snowballPushForce.Value;
+            HitPlayerServerRpc((int)player.playerClientId, force, other.ClosestPoint(transform.position));
+            FinalizeHit();
+            return true;
         }
 
         private bool HandleSnowmanHit(Collider other)
         {
             Snowman snowman = other.GetComponent<Snowman>();
-            if (snowman != null)
-            {
-                if (snowman.hidingPlayer != null)
-                    snowman.ExitSnowmanServerRpc((int)snowman.hidingPlayer.playerClientId);
-                else
-                    SnowPlaygroundsNetworkManager.Instance.DestroySnowmanServerRpc(snowman.GetComponent<NetworkObject>());
-                FinalizeHit();
-                return true;
-            }
-            return false;
+            if (snowman == null) return false;
+
+            if (snowman.isEnemyHiding)
+                snowman.SpawnFrostbiteServerRpc();
+            else if (snowman.hidingPlayer != null)
+                snowman.ExitSnowmanClientRpc((int)snowman.hidingPlayer.playerClientId);
+            else
+                SnowPlaygroundsNetworkManager.Instance.DestroySnowmanClientRpc(snowman.GetComponent<NetworkObject>());
+            FinalizeHit();
+            return true;
         }
 
         private void FinalizeHit()
@@ -205,7 +218,8 @@ namespace SnowPlaygrounds.Behaviours.Items
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject, int playerId, Vector3 position) => FreezeEnemyClientRpc(enemyObject, playerId, position);
+        public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject, int playerId, Vector3 position)
+            => FreezeEnemyClientRpc(enemyObject, playerId, position);
 
         [ClientRpc]
         public void FreezeEnemyClientRpc(NetworkObjectReference enemyObject, int playerId, Vector3 position)
@@ -222,7 +236,8 @@ namespace SnowPlaygrounds.Behaviours.Items
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void HitPlayerServerRpc(int playerId, Vector3 force, Vector3 position) => HitPlayerClientRpc(playerId, force, position);
+        public void HitPlayerServerRpc(int playerId, Vector3 force, Vector3 position)
+            => HitPlayerClientRpc(playerId, force, position);
 
         [ClientRpc]
         public void HitPlayerClientRpc(int playerId, Vector3 force, Vector3 position)
@@ -238,9 +253,11 @@ namespace SnowPlaygrounds.Behaviours.Items
         }
 
         [ServerRpc(RequireOwnership = false)]
-        public void DestroyObjectServerRpc() => DestroyObjectClientRpc();
+        public void DestroyObjectServerRpc()
+            => DestroyObjectClientRpc();
 
         [ClientRpc]
-        public void DestroyObjectClientRpc() => DestroyObjectInHand(throwingPlayer);
+        public void DestroyObjectClientRpc()
+            => DestroyObjectInHand(throwingPlayer);
     }
 }

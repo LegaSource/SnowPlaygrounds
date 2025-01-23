@@ -10,7 +10,8 @@ namespace SnowPlaygrounds.Behaviours.MapObjects
     {
         public InteractTrigger trigger;
 
-        public void GrabSnowballs() => ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+        public void GrabSnowballs()
+            => ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
 
         [ServerRpc(RequireOwnership = false)]
         public void ForceGrabObjectServerRpc(int playerId)
