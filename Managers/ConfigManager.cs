@@ -38,6 +38,8 @@ namespace SnowPlaygrounds.Managers
         public static ConfigEntry<int> maxFakeSnowman;
         // FROSTBITE
         public static ConfigEntry<int> frostbiteRarity;
+        public static ConfigEntry<bool> frostbiteEating;
+        public static ConfigEntry<int> frostbiteDamage;
         public static ConfigEntry<float> frostbiteMinCooldown;
         public static ConfigEntry<float> frostbiteMaxCooldown;
         public static ConfigEntry<float> frostbiteSnowballSpeed;
@@ -82,6 +84,8 @@ namespace SnowPlaygrounds.Managers
             maxFakeSnowman = SnowPlaygrounds.configFile.Bind(Constants.FAKE_SNOWMAN, "Max spawn", 3, $"Max {Constants.FAKE_SNOWMAN} to spawn by default");
             // FROSTBITE
             frostbiteRarity = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Rarity", 10, $"{Constants.FROSTBITE} rarity");
+            frostbiteEating = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Eat the player?", true, $"Does {Constants.FROSTBITE} eat the player on collision?");
+            frostbiteDamage = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Damage", 20, $"{Constants.FROSTBITE} damages on collision, does not apply if 'Eat the player?' is true");
             frostbiteMinCooldown = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Min cooldown", 0.5f, $"Minimum cooldown between {Constants.SNOWBALL} throws");
             frostbiteMaxCooldown = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Max cooldown", 1.75f, $"Maximum cooldown between {Constants.SNOWBALL} throws");
             frostbiteSnowballSpeed = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball speed", 45f, $"{Constants.SNOWBALL} speed");

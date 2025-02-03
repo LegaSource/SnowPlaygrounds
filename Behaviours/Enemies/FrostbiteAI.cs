@@ -20,6 +20,8 @@ namespace SnowPlaygrounds.Behaviours.Enemies
         public float shootCooldown = 0.5f;
         public bool hasHitPlayer = false;
 
+        public Coroutine attackCoroutine;
+
         public enum State
         {
             WANDERING,
@@ -53,6 +55,9 @@ namespace SnowPlaygrounds.Behaviours.Enemies
             {
                 TurnCompass.LookAt(targetPlayer.gameplayCamera.transform.position);
                 transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(new Vector3(0f, TurnCompass.eulerAngles.y, 0f)), 4f * Time.deltaTime);
+
+                if (state != (int)State.ATTACKING) return;
+                lastShootTimer += Time.deltaTime;
             }
         }
 
@@ -78,7 +83,7 @@ namespace SnowPlaygrounds.Behaviours.Enemies
             {
                 case (int)State.WANDERING:
                     agent.speed = 2f * currentHitHP;
-                    if (FoundClosestPlayerInRange(30f, 15f))
+                    if (FoundClosestPlayerInRange(30, 15))
                     {
                         StopSearch(currentSearch);
                         DoAnimationClientRpc("startChase");
@@ -121,15 +126,12 @@ namespace SnowPlaygrounds.Behaviours.Enemies
             }
         }
 
-        public bool FoundClosestPlayerInRange(float range, float senseRange)
+        public bool FoundClosestPlayerInRange(int range, int senseRange)
         {
-            TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: true);
-            if (targetPlayer == null)
-            {
-                TargetClosestPlayer(bufferDistance: 1.5f, requireLineOfSight: false);
-                range = senseRange;
-            }
-            return targetPlayer != null && Vector3.Distance(transform.position, targetPlayer.transform.position) < range;
+            PlayerControllerB player = CheckLineOfSightForPlayer(60f, range, senseRange);
+            if (player == null || !PlayerIsTargetable(player)) return false;
+
+            return targetPlayer = player;
         }
 
         public bool TargetClosestPlayerInAnyCase()
@@ -145,28 +147,22 @@ namespace SnowPlaygrounds.Behaviours.Enemies
                     targetPlayer = StartOfRound.Instance.allPlayerScripts[i];
                 }
             }
-            if (targetPlayer == null) return false;
-            return true;
+            return targetPlayer != null;
         }
 
         public void ShootPlayer(PlayerControllerB player)
         {
-            if (lastShootTimer >= shootCooldown)
-            {
-                PlayThrowClientRpc();
+            if (lastShootTimer < shootCooldown) return;
 
-                GameObject gameObject = Instantiate(SnowPlaygrounds.snowballEnemyObj, transform.position + Vector3.up * 1.5f, Quaternion.identity, StartOfRound.Instance.propsContainer);
-                SnowballEnemy snowballEnemy = gameObject.GetComponent<GrabbableObject>() as SnowballEnemy;
-                gameObject.GetComponent<NetworkObject>().Spawn();
-                snowballEnemy.ThrowSnowballClientRpc(thisNetworkObject, player.transform.position + Vector3.up * 1.5f);
+            PlayThrowClientRpc();
 
-                lastShootTimer = 0f;
-                shootCooldown = UnityEngine.Random.Range(ConfigManager.frostbiteMinCooldown.Value, ConfigManager.frostbiteMaxCooldown.Value);
-            }
-            else
-            {
-                lastShootTimer += Time.deltaTime;
-            }
+            GameObject gameObject = Instantiate(SnowPlaygrounds.snowballEnemyObj, transform.position + Vector3.up * 1.5f, Quaternion.identity, StartOfRound.Instance.propsContainer);
+            SnowballEnemy snowballEnemy = gameObject.GetComponent<GrabbableObject>() as SnowballEnemy;
+            gameObject.GetComponent<NetworkObject>().Spawn();
+            snowballEnemy.ThrowSnowballClientRpc(thisNetworkObject, player.transform.position + Vector3.up * 1.5f);
+
+            lastShootTimer = 0f;
+            shootCooldown = UnityEngine.Random.Range(ConfigManager.frostbiteMinCooldown.Value, ConfigManager.frostbiteMaxCooldown.Value);
         }
 
         [ClientRpc]
@@ -175,13 +171,28 @@ namespace SnowPlaygrounds.Behaviours.Enemies
 
         public override void OnCollideWithPlayer(Collider other)
         {
-            PlayerControllerB player = MeetsStandardPlayerCollisionConditions(other);
-            if (player == null || player != GameNetworkManager.Instance.localPlayerController) return;
+            base.OnCollideWithPlayer(other);
+
             if (currentBehaviourStateIndex != (int)State.CHASING && currentBehaviourStateIndex != (int)State.ATTACKING) return;
 
-            player.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing);
+            PlayerControllerB player = MeetsStandardPlayerCollisionConditions(other);
+            if (player == null || player != GameNetworkManager.Instance.localPlayerController) return;
+
+            attackCoroutine ??= StartCoroutine(AttackCoroutine(player));
+        }
+
+        public IEnumerator AttackCoroutine(PlayerControllerB player)
+        {
+            if (ConfigManager.frostbiteEating.Value)
+                player.KillPlayer(Vector3.zero, false, CauseOfDeath.Crushing);
+            else
+                player.DamagePlayer(ConfigManager.frostbiteDamage.Value, hasDamageSFX: true, callRPC: true, CauseOfDeath.Crushing);
+
+            yield return new WaitForSeconds(0.8f);
+
             DoAnimationServerRpc("startMove");
             SwitchToBehaviourServerRpc((int)State.WANDERING);
+            attackCoroutine = null;
         }
 
         public void HitFrostbite()

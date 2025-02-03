@@ -22,7 +22,7 @@ namespace SnowPlaygrounds
     {
         private const string modGUID = "Lega.SnowPlaygrounds";
         private const string modName = "Snow Playgrounds";
-        private const string modVersion = "1.0.7";
+        private const string modVersion = "1.0.8";
 
         private readonly Harmony harmony = new Harmony(modGUID);
         private readonly static AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
