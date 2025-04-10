@@ -2,39 +2,36 @@
 using UnityEngine;
 using UnityEngine.Rendering.HighDefinition;
 
-namespace SnowPlaygrounds.Behaviours
+namespace SnowPlaygrounds.Behaviours;
+
+public class FrozenCustomPass : CustomPass
 {
-    public class FrozenCustomPass : CustomPass
+    public Dictionary<Renderer, Material> rendererMaterials = [];
+
+    public void AddTargetRenderers(Renderer[] renderers, Material material)
     {
-        public Dictionary<Renderer, Material> rendererMaterials = new Dictionary<Renderer, Material>();
-
-        public void AddTargetRenderers(Renderer[] renderers, Material material)
+        foreach (Renderer renderer in renderers)
         {
-            foreach (Renderer renderer in renderers)
-            {
-                if (!rendererMaterials.ContainsKey(renderer))
-                    rendererMaterials[renderer] = material;
-            }
+            if (rendererMaterials.ContainsKey(renderer)) continue;
+            rendererMaterials[renderer] = material;
         }
+    }
 
-        public void RemoveTargetRenderers(List<Renderer> renderers)
+    public void RemoveTargetRenderers(List<Renderer> renderers)
+    {
+        foreach (Renderer renderer in renderers) _ = rendererMaterials.Remove(renderer);
+    }
+
+    public override void Execute(CustomPassContext ctx)
+    {
+        foreach (KeyValuePair<Renderer, Material> rendererMaterial in rendererMaterials)
         {
-            foreach (Renderer renderer in renderers)
-                rendererMaterials.Remove(renderer);
-        }
+            Renderer renderer = rendererMaterial.Key;
+            Material material = rendererMaterial.Value;
 
-        public override void Execute(CustomPassContext ctx)
-        {
-            foreach (var rendererMaterial in rendererMaterials)
-            {
-                Renderer renderer = rendererMaterial.Key;
-                Material material = rendererMaterial.Value;
+            if (renderer == null || renderer.sharedMaterials == null) continue;
 
-                if (renderer == null || renderer.sharedMaterials == null) continue;
-
-                for (int i = 0; i < renderer.sharedMaterials.Length; i++)
-                    ctx.cmd.DrawRenderer(renderer, material);
-            }
+            for (int i = 0; i < renderer.sharedMaterials.Length; i++) ctx.cmd.DrawRenderer(renderer, material);
         }
     }
 }
