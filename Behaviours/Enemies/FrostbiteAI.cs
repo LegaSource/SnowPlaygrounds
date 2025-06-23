@@ -198,9 +198,9 @@ public class FrostbiteAI : EnemyAI
 
     private IEnumerator HitCoroutine()
     {
-        CustomPassManager.SetupCustomPassForEnemy(this);
+        CustomPassManager.SetupAuraForObjects([gameObject], SnowPlaygrounds.frozenShader);
         yield return new WaitForSeconds(0.2f);
-        CustomPassManager.RemoveAura(this);
+        CustomPassManager.RemoveAuraFromObjects([gameObject]);
     }
 
     public override void HitEnemy(int force = 1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)

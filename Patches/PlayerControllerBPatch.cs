@@ -11,9 +11,6 @@ namespace SnowPlaygrounds.Patches;
 
 internal class PlayerControllerBPatch
 {
-    public static int cameraCollideLayerMask = (1 << LayerMask.NameToLayer("Room")) | (1 << LayerMask.NameToLayer("PlaceableShipObject")) | (1 << LayerMask.NameToLayer("Terrain")) | (1 << LayerMask.NameToLayer("MiscLevelGeometry"));
-    public static float targetCameraDistance = 3f;
-
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.PlayerLookInput))]
     [HarmonyPrefix]
     private static bool HandleSnowmanCamera(ref PlayerControllerB __instance)

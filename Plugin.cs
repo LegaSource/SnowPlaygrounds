@@ -22,7 +22,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
 {
     private const string modGUID = "Lega.SnowPlaygrounds";
     private const string modName = "Snow Playgrounds";
-    private const string modVersion = "1.1.0";
+    private const string modVersion = "1.1.2";
 
     private readonly Harmony harmony = new Harmony(modGUID);
     private static readonly AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -144,7 +144,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
         if (isInside)
         {
             if (ConfigManager.anyLevel.Value) MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.All, (SelectableLevel _) => animationCurveInside);
-            else MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.None, ConfigManager.spawnLevels.Value.Split(','), (SelectableLevel _) => animationCurveInside);
+            else MapObjects.RegisterMapObject(mapObjDef, Levels.LevelTypes.None, ConfigManager.spawnLevels.Value.ToLowerInvariant().Split(','), (SelectableLevel _) => animationCurveInside);
         }
 
         return mapObjDef.spawnableMapObject.prefabToSpawn;

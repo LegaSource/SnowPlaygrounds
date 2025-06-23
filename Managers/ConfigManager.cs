@@ -7,6 +7,7 @@ public class ConfigManager
     // _GLOBAL_
     public static ConfigEntry<bool> anyLevel;
     public static ConfigEntry<string> spawnLevels;
+    public static ConfigEntry<string> spawnWeathers;
     public static ConfigEntry<string> frozenShaderExclusions;
     // SNOW PILE
     public static ConfigEntry<bool> isSnowPileInside;
@@ -53,7 +54,8 @@ public class ConfigManager
     {
         // _GLOBAL_
         anyLevel = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Any level", true, "If true, the hazards can spawn on any level");
-        spawnLevels = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn levels", "TitanLevel,DineLevel,RendLevel", "Name of the levels where the hazards can spawn");
+        spawnLevels = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn levels", "tundralevel,titanlevel,dinelevel,rendlevel", "Name of the levels where the hazards can spawn");
+        spawnWeathers = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn weathers", "Blizzard,Snowfall", "Name of the weathers where the hazards can spawn");
         frozenShaderExclusions = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Frozen shader exclusions", "Red Locust Bees", "List of creatures that are not affected by the frozen shader, but are still slowed down");
         // SNOW PILE
         isSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Can spawn inside", true, $"Can {Constants.SNOW_PILE} spawn inside");

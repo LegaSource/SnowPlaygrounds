@@ -23,16 +23,11 @@ internal class RoundManagerPatch
     private static void SpawnOutsideHazards(ref RoundManager __instance)
     {
         if (!__instance.IsHost) return;
+        if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())) return;
 
-        if (ConfigManager.anyLevel.Value || ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name))
-        {
-            SPUtilities.Shuffle(__instance.outsideAINodes);
-
-            if (ConfigManager.isSnowPileOutside.Value)
-                SpawnSnowPile(__instance);
-            if (ConfigManager.isSnowmanOutside.Value)
-                SpawnSnowman(__instance);
-        }
+        SPUtilities.Shuffle(__instance.outsideAINodes);
+        if (ConfigManager.isSnowPileOutside.Value) SpawnSnowPile(__instance);
+        if (ConfigManager.isSnowmanOutside.Value) SpawnSnowman(__instance);
     }
 
     private static void SpawnSnowPile(RoundManager roundManager)
@@ -73,7 +68,7 @@ internal class RoundManagerPatch
     private static void AddFakeSnowman(ref RoundManager __instance)
     {
         if (!__instance.IsHost) return;
-        if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name)) return;
+        if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())) return;
 
         SnowPlaygrounds.snowmen.AddRange(Object.FindObjectsOfType<Snowman>());
 

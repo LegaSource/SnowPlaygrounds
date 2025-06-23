@@ -39,13 +39,14 @@ public class SnowPile : NetworkBehaviour
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
         Snowball snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as Snowball;
-
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         if (player == GameNetworkManager.Instance.localPlayerController) GrabObject(snowball, player);
     }
 
     public void GrabObject(Snowball snowball, PlayerControllerB player)
     {
+        snowball.originalScale = snowball.transform.lossyScale;
+
         player.currentlyGrabbingObject = snowball;
         player.grabInvalidated = false;
 

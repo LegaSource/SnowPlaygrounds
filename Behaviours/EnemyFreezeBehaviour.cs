@@ -23,11 +23,11 @@ public class EnemyFreezeBehaviour : MonoBehaviour
         {
             originalSpeed = enemy.agent.speed;
             slowedSpeed = enemy.agent.speed / slowdownFactor;
-            CustomPassManager.SetupCustomPassForEnemy(enemy);
+            CustomPassManager.SetupAuraForObjects([enemy.gameObject], SnowPlaygrounds.frozenShader);
 
             yield return new WaitForSeconds(duration);
 
-            CustomPassManager.RemoveAura(enemy);
+            CustomPassManager.RemoveAuraFromObjects([enemy.gameObject]);
         }
         freezeCoroutine = null;
     }
