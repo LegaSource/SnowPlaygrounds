@@ -1,5 +1,7 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Items;
+using SnowPlaygrounds.Managers;
 using System;
 using Unity.Netcode;
 using UnityEngine;
@@ -8,10 +10,37 @@ namespace SnowPlaygrounds.Behaviours.MapObjects;
 
 public class SnowPile : NetworkBehaviour
 {
+    public int currentStackedItems;
     public InteractTrigger trigger;
+    private Vector3 initialScale;
+
+    private void Start()
+    {
+        currentStackedItems = ConfigManager.snowPileAmount.Value;
+        initialScale = transform.localScale;
+    }
 
     public void GrabSnowballs()
-        => ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+    {
+        GrabbableObject grabbableObject = GameNetworkManager.Instance.localPlayerController.currentlyHeldObjectServer;
+        if (grabbableObject != null && grabbableObject is Snowgun snowgun && snowgun.currentStackedItems < ConfigManager.snowgunAmount.Value)
+        {
+            int nbSnowball = ConfigManager.snowgunAmount.Value - snowgun.currentStackedItems;
+            RemoveSnowballServerRpc(nbSnowball);
+            ReloadSnowgunServerRpc(snowgun.GetComponent<NetworkObject>(), nbSnowball);
+            return;
+        }
+        ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void ReloadSnowgunServerRpc(NetworkObjectReference obj, int nbSnowball)
+    {
+        if (!obj.TryGet(out NetworkObject networkObject)) return;
+
+        Snowgun snowgun = networkObject.gameObject.GetComponentInChildren<Snowgun>();
+        snowgun.UpdateStackedItemsClientRpc(nbSnowball);
+    }
 
     [ServerRpc(RequireOwnership = false)]
     public void ForceGrabObjectServerRpc(int playerId)
@@ -19,7 +48,7 @@ public class SnowPile : NetworkBehaviour
         try
         {
             PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-            GameObject gameObject = Instantiate(SnowPlaygrounds.snowballObj, player.transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer);
+            GameObject gameObject = Instantiate(SnowPlaygrounds.snowballPlayerObj, player.transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer);
             GrabbableObject grabbableObject = gameObject.GetComponent<GrabbableObject>();
             grabbableObject.fallTime = 0f;
             NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
@@ -38,12 +67,12 @@ public class SnowPile : NetworkBehaviour
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
-        Snowball snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as Snowball;
+        SnowballPlayer snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as SnowballPlayer;
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         if (player == GameNetworkManager.Instance.localPlayerController) GrabObject(snowball, player);
     }
 
-    public void GrabObject(Snowball snowball, PlayerControllerB player)
+    public void GrabObject(SnowballPlayer snowball, PlayerControllerB player)
     {
         snowball.originalScale = snowball.transform.lossyScale;
 
@@ -69,6 +98,22 @@ public class SnowPile : NetworkBehaviour
             if (!player.isTestingPlayer) player.GrabObjectServerRpc(player.currentlyGrabbingObject.NetworkObject);
             if (player.grabObjectCoroutine != null) player.StopCoroutine(player.grabObjectCoroutine);
             player.grabObjectCoroutine = player.StartCoroutine(player.GrabObject());
+            snowball.InitializeServerRpc(Mathf.Min(ConfigManager.snowballAmount.Value, currentStackedItems));
+            RemoveSnowballServerRpc(ConfigManager.snowballAmount.Value);
         }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void RemoveSnowballServerRpc(int nbSnowball) => RemoveSnowballClientRpc(nbSnowball);
+
+    [ClientRpc]
+    public void RemoveSnowballClientRpc(int nbSnowball)
+    {
+        float factor = 0.05f * nbSnowball;
+        transform.localScale -= initialScale * Mathf.Max(factor, 0f);
+        currentStackedItems -= nbSnowball;
+
+        if (currentStackedItems <= 0 && LFCUtilities.IsServer)
+            Destroy(gameObject);
     }
 }

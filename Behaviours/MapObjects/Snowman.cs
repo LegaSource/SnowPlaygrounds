@@ -1,4 +1,5 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
@@ -7,7 +8,7 @@ using UnityEngine;
 
 namespace SnowPlaygrounds.Behaviours.MapObjects;
 
-public class Snowman : NetworkBehaviour
+public class Snowman : NetworkBehaviour, IHittable
 {
     public InteractTrigger snowmanTrigger;
     public Camera camera;
@@ -56,8 +57,8 @@ public class Snowman : NetworkBehaviour
     [ClientRpc]
     public void SpawnFrostbiteClientRpc()
     {
-        if (ConfigManager.isJumpscareOn.Value) SPUtilities.PlayJumpscareAudio(transform.position);
-        Destroy(gameObject);
+        if (ConfigManager.isJumpscareOn.Value) SPUtilities.PlayAudio(SnowPlaygrounds.jumpscareAudio, transform.position, ConfigManager.jumpscareVolume.Value);
+        if (LFCUtilities.IsServer) Destroy(gameObject);
     }
 
     public void SnowmanInteraction()
@@ -76,7 +77,7 @@ public class Snowman : NetworkBehaviour
             GrabbableObject grabbableObject = player.ItemSlots[i];
             if (grabbableObject == null) continue;
 
-            if (grabbableObject is Snowball snowball)
+            if (grabbableObject is SnowballPlayer snowball)
             {
                 nbSnowball += snowball.currentStackedItems;
                 player.DestroyItemInSlotAndSync(i);
@@ -87,8 +88,7 @@ public class Snowman : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void BuildSnowmanServerRpc(int nbSnowball)
-        => BuildSnowmanClientRpc(nbSnowball);
+    public void BuildSnowmanServerRpc(int nbSnowball) => BuildSnowmanClientRpc(nbSnowball);
 
     [ClientRpc]
     public void BuildSnowmanClientRpc(int nbSnowball)
@@ -110,8 +110,7 @@ public class Snowman : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void EnterSnowmanServerRpc(int playerId)
-        => EnterSnowmanClientRpc(playerId);
+    public void EnterSnowmanServerRpc(int playerId) => EnterSnowmanClientRpc(playerId);
 
     [ClientRpc]
     public void EnterSnowmanClientRpc(int playerId)
@@ -135,7 +134,7 @@ public class Snowman : NetworkBehaviour
 
             HUDManager.Instance.ChangeControlTip(0, "Exit Snowman : [Q]", clearAllOther: true);
 
-            SPUtilities.SetUntargetable(player);
+            SPUtilities.SetTargetable(player, false);
 
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Disable();
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Disable();
@@ -143,12 +142,10 @@ public class Snowman : NetworkBehaviour
         }
     }
 
-    public void ExitSnowman()
-        => ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+    public void ExitSnowman() => ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
 
     [ServerRpc(RequireOwnership = false)]
-    public void ExitSnowmanServerRpc(int playerId)
-        => ExitSnowmanClientRpc(playerId);
+    public void ExitSnowmanServerRpc(int playerId) => ExitSnowmanClientRpc(playerId);
 
     [ClientRpc]
     public void ExitSnowmanClientRpc(int playerId)
@@ -164,14 +161,13 @@ public class Snowman : NetworkBehaviour
 
             HUDManager.Instance.ClearControlTips();
 
-            SPUtilities.StartTargetable(GameNetworkManager.Instance.localPlayerController, ConfigManager.snowmanSlowdownDuration.Value);
+            SPUtilities.SetTargetable(player, true, ConfigManager.snowmanSlowdownDuration.Value);
 
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Enable();
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Enable();
             IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch", false).Enable();
         }
-
-        Destroy(gameObject);
+        if (LFCUtilities.IsServer) Destroy(gameObject);
     }
 
     public override void OnDestroy()
@@ -189,8 +185,7 @@ public class Snowman : NetworkBehaviour
     }
 
     [ServerRpc(RequireOwnership = false)]
-    public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject)
-        => FreezeEnemyClientRpc(enemyObject);
+    public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject) => FreezeEnemyClientRpc(enemyObject);
 
     [ClientRpc]
     public void FreezeEnemyClientRpc(NetworkObjectReference enemyObject)
@@ -201,13 +196,25 @@ public class Snowman : NetworkBehaviour
         if (enemy == null) return;
 
         if (hidingPlayer != null && hidingPlayer == GameNetworkManager.Instance.localPlayerController) ExitSnowman();
-
         if (enemy is FrostbiteAI frostbite) frostbite.HitFrostbite();
-        else SPUtilities.StartFreezeEnemy(enemy, ConfigManager.snowmanSlowdownDuration.Value, ConfigManager.snowmanSlowdownFactor.Value);
+        else SPUtilities.FreezeEnemy(enemy, ConfigManager.snowmanSlowdownDuration.Value, ConfigManager.snowmanSlowdownFactor.Value);
     }
 
     public void RefreshHoverTip()
         => snowmanTrigger.hoverTip = currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value
             ? $"Add snowball {currentStackedSnowball}/{ConfigManager.amountSnowballToBuild.Value} : [LMB]"
             : "Enter : [LMB]";
+
+    public bool Hit(int force, Vector3 hitDirection, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)
+    {
+        if (currentStackedSnowball >= ConfigManager.amountSnowballToBuild.Value) SpawnSnowPileServerRpc();
+        return true;
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SpawnSnowPileServerRpc()
+    {
+        SPUtilities.SpawnSnowPile(transform.position + Vector3.up, transform.rotation);
+        Destroy(gameObject);
+    }
 }

@@ -1,4 +1,6 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Registries;
+using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using Unity.Netcode;
@@ -10,24 +12,23 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
 {
     public static SnowPlaygroundsNetworkManager Instance;
 
-    public void Awake()
-        => Instance = this;
+    public void Awake() => Instance = this;
 
     [ServerRpc(RequireOwnership = false)]
-    public void SpawnSnowmanServerRpc(int playerId, NetworkObjectReference obj, Vector3 position, Quaternion rotation)
+    public void SpawnSnowmanFromSnowballServerRpc(int playerId, NetworkObjectReference obj, Vector3 position, Quaternion rotation)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
-        Snowball snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as Snowball;
+        SnowballPlayer snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as SnowballPlayer;
         if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
         {
             GameObject gameObject = Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, rotation.eulerAngles.y, rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
             gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * snowball.currentStackedItems;
             NetworkObject spawnedNetworkObject = gameObject.GetComponent<NetworkObject>();
             spawnedNetworkObject.Spawn(true);
-            SpawnSnowmanClientRpc(playerId, spawnedNetworkObject, snowball.currentStackedItems);
 
-            DestroyObjectClientRpc(obj);
+            SpawnSnowmanClientRpc(playerId, spawnedNetworkObject, snowball.currentStackedItems);
+            snowball.DestroySnowballClientRpc();
         }
     }
 
@@ -65,10 +66,6 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
 
     [ServerRpc(RequireOwnership = false)]
     public void DestroySnowmanServerRpc(NetworkObjectReference obj)
-        => DestroySnowmanClientRpc(obj);
-
-    [ClientRpc]
-    public void DestroySnowmanClientRpc(NetworkObjectReference obj)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
@@ -76,13 +73,68 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         Destroy(snowman.gameObject);
     }
 
-    [ClientRpc]
-    public void DestroyObjectClientRpc(NetworkObjectReference obj)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
+    [ServerRpc(RequireOwnership = false)]
+    public void SnowballFreezeEnemyServerRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation)
+        => SnowballFreezeEnemyClientRpc(enemyObject, position, rotation);
 
-        GrabbableObject grabbableObject = networkObject.gameObject.GetComponentInChildren<GrabbableObject>();
-        if (grabbableObject is Snowball snowball) snowball.isThrown = true;
-        grabbableObject.DestroyObjectInHand(grabbableObject.playerHeldBy);
+    [ClientRpc]
+    public void SnowballFreezeEnemyClientRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation, bool isEnemySnowball = false)
+    {
+        if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
+
+        SPUtilities.SnowballImpact(position, rotation);
+        EnemyAI enemy = networkObject.gameObject.GetComponentInChildren<EnemyAI>();
+        if (enemy != null)
+        {
+            if (enemy is FrostbiteAI frostbite) frostbite.HitFrostbite(isEnemySnowball);
+            else SPUtilities.FreezeEnemy(enemy, ConfigManager.snowballSlowdownDuration.Value, ConfigManager.snowballSlowdownFactor.Value);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SnowballHitPlayerServerRpc(int playerId, Vector3 force, Vector3 position) => SnowballHitPlayerClientRpc(playerId, force, position);
+
+    [ClientRpc]
+    public void SnowballHitPlayerClientRpc(int playerId, Vector3 force, Vector3 position)
+    {
+        PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
+        SPUtilities.SnowballImpact(position, player.transform.rotation);
+
+        if (GameNetworkManager.Instance.localPlayerController == player)
+        {
+            _ = player.thisController.Move(force);
+            HUDManager.Instance.flashFilter = Mathf.Min(1f, HUDManager.Instance.flashFilter + 0.4f);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void ShootGlacialDecoyServerRpc(int playerId)
+    {
+        GameObject gameObject = Instantiate(SnowPlaygrounds.snowballGDObj, transform.position - (transform.forward * 0.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
+        SnowballGD snowballGD = gameObject.GetComponent<SnowballGD>();
+        gameObject.GetComponent<NetworkObject>().Spawn();
+        snowballGD.ShootSnowballClientRpc(playerId);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SpawnGlacialDecoyServerRpc(int playerId, NetworkObjectReference enemyObj) => ApplyFrostClientRpc(playerId, enemyObj);
+
+    [ClientRpc]
+    public void ApplyFrostClientRpc(int playerId, NetworkObjectReference enemyObj)
+    {
+        if (!enemyObj.TryGet(out NetworkObject networkObjectEnemy)) return;
+
+        EnemyAI enemy = networkObjectEnemy.gameObject.GetComponentInChildren<EnemyAI>();
+        LFCStatusEffectRegistry.ApplyStatus(enemy.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 100);
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void SpawnGlacialDecoyServerRpc(int playerId, int targetId) => ApplyFrostClientRpc(playerId, targetId);
+
+    [ClientRpc]
+    public void ApplyFrostClientRpc(int playerId, int targetId)
+    {
+        PlayerControllerB targetedPlayer = StartOfRound.Instance.allPlayerObjects[targetId].GetComponent<PlayerControllerB>();
+        LFCStatusEffectRegistry.ApplyStatus(targetedPlayer.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 10);
     }
 }

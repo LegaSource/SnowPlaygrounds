@@ -8,8 +8,9 @@ public class ConfigManager
     public static ConfigEntry<bool> anyLevel;
     public static ConfigEntry<string> spawnLevels;
     public static ConfigEntry<string> spawnWeathers;
-    public static ConfigEntry<string> frozenShaderExclusions;
+    public static ConfigEntry<string> snowShaderExclusions;
     // SNOW PILE
+    public static ConfigEntry<int> snowPileAmount;
     public static ConfigEntry<bool> isSnowPileInside;
     public static ConfigEntry<int> minSnowPileInside;
     public static ConfigEntry<int> maxSnowPileInside;
@@ -46,9 +47,13 @@ public class ConfigManager
     public static ConfigEntry<float> frostbiteSnowballSpeedInside;
     public static ConfigEntry<float> frostbiteSnowballSpeedOutside;
     public static ConfigEntry<int> frostbiteSnowballDamage;
-    public static ConfigEntry<float> frostbiteStunDuration;
+    public static ConfigEntry<float> frostbiteFreezeDuration;
     public static ConfigEntry<float> frostbiteHitIncrement;
     public static ConfigEntry<float> frostbiteHitMax;
+    // SNOWGUN
+    public static ConfigEntry<int> snowgunAmount;
+    // GLACIAL DECOY
+    public static ConfigEntry<int> glacialDecoyCooldown;
 
     public static void Load()
     {
@@ -56,8 +61,9 @@ public class ConfigManager
         anyLevel = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Any level", true, "If true, the hazards can spawn on any level");
         spawnLevels = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn levels", "tundralevel,titanlevel,dinelevel,rendlevel", "Name of the levels where the hazards can spawn");
         spawnWeathers = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn weathers", "Blizzard,Snowfall", "Name of the weathers where the hazards can spawn");
-        frozenShaderExclusions = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Frozen shader exclusions", "Red Locust Bees", "List of creatures that are not affected by the frozen shader, but are still slowed down");
+        snowShaderExclusions = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Snow shader exclusions", "Red Locust Bees", "List of creatures that are not affected by the snow shader, but are still slowed down");
         // SNOW PILE
+        snowPileAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Amount", 20, $"Amount of snow in a {Constants.SNOW_PILE}");
         isSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Can spawn inside", true, $"Can {Constants.SNOW_PILE} spawn inside");
         minSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Min spawn inside", 5, $"Min {Constants.SNOW_PILE} to spawn");
         maxSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Max spawn inside", 8, $"Max {Constants.SNOW_PILE} to spawn");
@@ -94,8 +100,12 @@ public class ConfigManager
         frostbiteSnowballSpeedInside = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball speed inside", 30f, $"{Constants.SNOWBALL} speed when {Constants.FROSTBITE} is inside the dungeon");
         frostbiteSnowballSpeedOutside = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball speed outside", 45f, $"{Constants.SNOWBALL} speed when {Constants.FROSTBITE} is outside the dungeon");
         frostbiteSnowballDamage = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball damage", 5, $"{Constants.SNOWBALL} damage");
-        frostbiteStunDuration = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Stun duration", 2f, $"Stun duration when a player is hit by a {Constants.SNOWBALL}");
+        frostbiteFreezeDuration = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Freeze duration", 2f, $"Freeze duration when a player is hit by a {Constants.SNOWBALL}");
         frostbiteHitIncrement = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Hit increment", 0.1f, $"Hit increment - this value starts at 1 and is used as a multiplier for the enemy's speed and the damage inflicted by his {Constants.SNOWBALL}");
-        frostbiteHitMax = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Hit max value", 2f, $"Max hit value before the {Constants.FROSTBITE} dies, this value is reached through the increment of the previous value");
+        frostbiteHitMax = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Hit max value", 2f, $"Max hit value before the {Constants.FROSTBITE} dies, this value is reached through the increments of the previous values");
+        // SNOWGUN
+        snowgunAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWGUN, "Amount", 20, $"Amount of snow in a {Constants.SNOWGUN}");
+        // GLACIAL DECOY
+        glacialDecoyCooldown = SnowPlaygrounds.configFile.Bind(Constants.GLACIAL_DECOY, "Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_DECOY}");
     }
 }

@@ -9,10 +9,14 @@ public class Constants
     public const string FAKE_SNOWMAN = "Fake Snowman";
     // Items
     public const string SNOWBALL = "Snowball";
+    public const string SNOWGUN = "Snowgun";
+    public const string GLACIAL_DECOY = "Glacial Decoy";
     // Map objects
     public const string SNOW_PILE = "Snow Pile";
     public const string SNOWMAN = "Snowman";
     public static Vector3 SNOWMAN_SCALE = new(2.1f, 2.1f, 2.1f);
     // Enemies
     public const string FROSTBITE = "Frostbite";
+    // Others
+    public const string SNOWBALL_AMOUNT = "Snowball Amount : ";
 }

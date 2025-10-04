@@ -1,6 +1,8 @@
 ﻿using HarmonyLib;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
@@ -15,7 +17,7 @@ internal class RoundManagerPatch
     private static void SpawnInsideHazards(ref RoundManager __instance)
     {
         if (!__instance.IsHost) return;
-        SPUtilities.Shuffle(__instance.insideAINodes);
+        LFCUtilities.Shuffle(__instance.insideAINodes);
     }
 
     [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnOutsideHazards))]
@@ -25,41 +27,22 @@ internal class RoundManagerPatch
         if (!__instance.IsHost) return;
         if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())) return;
 
-        SPUtilities.Shuffle(__instance.outsideAINodes);
-        if (ConfigManager.isSnowPileOutside.Value) SpawnSnowPile(__instance);
-        if (ConfigManager.isSnowmanOutside.Value) SpawnSnowman(__instance);
+        LFCUtilities.Shuffle(__instance.outsideAINodes);
+        if (ConfigManager.isSnowmanOutside.Value)
+            SpawnHazard(__instance, ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowmanOutside.Value, (pos, rot) => SPUtilities.SpawnSnowman(pos, rot));
+        if (ConfigManager.isSnowPileOutside.Value)
+            SpawnHazard(__instance, ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowPileOutside.Value, SPUtilities.SpawnSnowPile);
     }
 
-    private static void SpawnSnowPile(RoundManager roundManager)
+    private static void SpawnHazard(RoundManager roundManager, int minHazard, int maxHazard, Action<Vector3, Quaternion> spawnMethod)
     {
         System.Random random = new System.Random();
-        for (int i = 0; i < random.Next(ConfigManager.minSnowPileOutside.Value, ConfigManager.maxSnowPileOutside.Value); i++)
+        for (int i = 0; i < random.Next(minHazard, maxHazard); i++)
         {
             GameObject[] outsideAINodes = roundManager.outsideAINodes;
             Vector3 position = outsideAINodes[random.Next(0, outsideAINodes.Length)].transform.position;
             position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(position, 10f, default, random) + Vector3.up;
-            if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-            {
-                GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowPileObj, hit.point + Vector3.down, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform);
-                gameObject.transform.localScale *= 2.5f;
-                gameObject.GetComponent<NetworkObject>().Spawn(true);
-            }
-        }
-    }
-
-    private static void SpawnSnowman(RoundManager roundManager)
-    {
-        System.Random random = new System.Random();
-        for (int i = 0; i < random.Next(ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowmanOutside.Value); i++)
-        {
-            GameObject[] outsideAINodes = roundManager.outsideAINodes;
-            Vector3 position = outsideAINodes[random.Next(0, outsideAINodes.Length)].transform.position;
-            position = RoundManager.Instance.GetRandomNavMeshPositionInBoxPredictable(position, 10f, default, random) + Vector3.up;
-            if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-            {
-                GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.identity, RoundManager.Instance.mapPropsContainer.transform);
-                gameObject.GetComponent<NetworkObject>().Spawn(true);
-            }
+            spawnMethod(position, Quaternion.identity);
         }
     }
 
@@ -70,10 +53,10 @@ internal class RoundManagerPatch
         if (!__instance.IsHost) return;
         if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())) return;
 
-        SnowPlaygrounds.snowmen.AddRange(Object.FindObjectsOfType<Snowman>());
+        SnowPlaygrounds.snowmen.AddRange(UnityEngine.Object.FindObjectsOfType<Snowman>());
 
         System.Random random = new System.Random();
         List<Snowman> randomSnowmen = SnowPlaygrounds.snowmen.OrderBy(s => random.Next()).Take(random.Next(ConfigManager.minFakeSnowman.Value, ConfigManager.maxFakeSnowman.Value)).ToList();
-        foreach (Snowman snowman in randomSnowmen) SnowPlaygroundsNetworkManager.Instance.AddFakeSnowmanClientRpc(snowman.GetComponent<NetworkObject>());
+        randomSnowmen.ForEach(s => SnowPlaygroundsNetworkManager.Instance.AddFakeSnowmanClientRpc(s.GetComponent<NetworkObject>()));
     }
 }

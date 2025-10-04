@@ -11,6 +11,8 @@ namespace SnowPlaygrounds.Patches;
 
 internal class PlayerControllerBPatch
 {
+    public static bool isTargetable = true;
+
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.PlayerLookInput))]
     [HarmonyPrefix]
     private static bool HandleSnowmanCamera(ref PlayerControllerB __instance)
@@ -50,11 +52,11 @@ internal class PlayerControllerBPatch
     [HarmonyPrefix]
     private static bool PreDropObject(ref PlayerControllerB __instance)
     {
-        if (__instance.currentlyHeldObjectServer is Snowball snowball && !snowball.isThrown)
+        if (__instance.currentlyHeldObjectServer is SnowballPlayer snowball && !snowball.isThrown)
         {
             if (StartOfRound.Instance.shipHasLanded && __instance.isCrouching)
             {
-                SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc(
+                SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanFromSnowballServerRpc(
                     (int)__instance.playerClientId,
                     snowball.GetComponent<NetworkObject>(),
                     __instance.gameplayCamera.transform.position + __instance.gameplayCamera.transform.forward,
@@ -77,7 +79,7 @@ internal class PlayerControllerBPatch
         for (int i = 0; i < __instance.ItemSlots.Length; i++)
         {
             GrabbableObject grabbableObject = __instance.ItemSlots[i];
-            if (grabbableObject == null || grabbableObject is not Snowball || !grabbableObject.IsSpawned) continue;
+            if (grabbableObject == null || grabbableObject is not SnowballPlayer || !grabbableObject.IsSpawned) continue;
 
             __instance.DestroyItemInSlot(i);
             isSnowballThrown = true;

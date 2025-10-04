@@ -38,6 +38,5 @@ internal class StartOfRoundPatch
 
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnDisable))]
     [HarmonyPostfix]
-    public static void OnDisable()
-        => SnowPlaygroundsNetworkManager.Instance = null;
+    public static void OnDisable() => SnowPlaygroundsNetworkManager.Instance = null;
 }

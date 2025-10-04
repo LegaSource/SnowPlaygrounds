@@ -1,10 +1,9 @@
 ﻿using GameNetcodeStuff;
-using SnowPlaygrounds.Behaviours;
+using LegaFusionCore.Behaviours;
+using LegaFusionCore.Behaviours.Shaders;
 using SnowPlaygrounds.Behaviours.MapObjects;
-using SnowPlaygrounds.Managers;
 using SnowPlaygrounds.Patches;
 using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
@@ -13,45 +12,68 @@ namespace SnowPlaygrounds;
 
 public class SPUtilities
 {
+    public static Coroutine freezeEnemyCoroutine;
     public static Coroutine targetableCoroutine;
 
-    public static void Shuffle<T>(IList<T> collection)
+    public static Snowman SpawnSnowman(Vector3 position, Quaternion rotation)
     {
-        for (int i = collection.Count - 1; i > 0; i--)
+        if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
         {
-            int randomIndex = Random.Range(0, i + 1);
-            (collection[randomIndex], collection[i]) = (collection[i], collection[randomIndex]);
+            GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, rotation.eulerAngles.y, rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
+            NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
+            networkObject.Spawn(true);
+
+            return networkObject.gameObject.GetComponentInChildren<Snowman>();
+        }
+        return null;
+    }
+
+    public static void SpawnSnowPile(Vector3 position, Quaternion rotation)
+    {
+        if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
+        {
+            GameObject gameObject = Object.Instantiate(SnowPlaygrounds.snowPileObj, hit.point, Quaternion.Euler(0f, rotation.eulerAngles.y, rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
+            gameObject.GetComponent<NetworkObject>().Spawn(true);
         }
     }
 
-    public static void StartFreezeEnemy(EnemyAI enemy, float duration, float slowdownFactor)
+    public static void FreezeEnemy(EnemyAI enemy, float duration, float slowdownFactor)
     {
-        EnemyFreezeBehaviour freezeBehaviour = enemy.GetComponent<EnemyFreezeBehaviour>();
-        if (freezeBehaviour == null)
+        if (freezeEnemyCoroutine != null) enemy.StopCoroutine(freezeEnemyCoroutine);
+        freezeEnemyCoroutine = enemy.StartCoroutine(FreezeEnemyCoroutine(enemy, duration, slowdownFactor));
+    }
+
+    private static IEnumerator FreezeEnemyCoroutine(EnemyAI enemy, float duration, float slowdownFactor)
+    {
+        CustomPassManager.SetupAuraForObjects([enemy.gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}SnowballFreeze");
+        EnemySpeedBehaviour speedBehaviour = enemy.GetComponent<EnemySpeedBehaviour>();
+        speedBehaviour?.AddSpeedData(SnowPlaygrounds.modName, (1f / slowdownFactor) - 1, enemy.agent.speed);
+
+        yield return new WaitForSeconds(duration);
+
+        speedBehaviour?.RemoveSpeedData(SnowPlaygrounds.modName);
+        CustomPassManager.RemoveAuraFromObjects([enemy.gameObject], $"{SnowPlaygrounds.modName}SnowballFreeze");
+        freezeEnemyCoroutine = null;
+    }
+
+    public static void SetTargetable(PlayerControllerB player, bool targetable, float duration = 0f)
+    {
+        if (targetableCoroutine != null)
         {
-            freezeBehaviour = enemy.gameObject.AddComponent<EnemyFreezeBehaviour>();
-            freezeBehaviour.enemy = enemy;
+            player.StopCoroutine(targetableCoroutine);
+            targetableCoroutine = null;
         }
-        freezeBehaviour.StartFreeze(duration, slowdownFactor);
+
+        if (duration > 0f) targetableCoroutine = player.StartCoroutine(TargetableCoroutine(targetable, duration));
+        else PlayerControllerBPatch.isTargetable = targetable;
     }
 
-    public static void StartTargetable(PlayerControllerB player, float duration)
-    {
-        if (targetableCoroutine != null) player.StopCoroutine(targetableCoroutine);
-        targetableCoroutine = player.StartCoroutine(SetTargetablePlayerCoroutine(duration));
-    }
-
-    public static IEnumerator SetTargetablePlayerCoroutine(float duration)
+    private static IEnumerator TargetableCoroutine(bool targetable, float duration)
     {
         yield return new WaitForSeconds(duration);
-        EnemyAIPatch.isTargetable = true;
-        targetableCoroutine = null;
-    }
 
-    public static void SetUntargetable(PlayerControllerB player)
-    {
-        if (targetableCoroutine != null) player.StopCoroutine(targetableCoroutine);
-        EnemyAIPatch.isTargetable = false;
+        PlayerControllerBPatch.isTargetable = targetable;
+        targetableCoroutine = null;
     }
 
     public static void ApplyDecal(Vector3 point, Vector3 normal)
@@ -66,34 +88,27 @@ public class SPUtilities
 
     public static void SnowballImpact(Vector3 position, Quaternion rotation)
     {
-        PlaySnowPoof(position);
+        PlayAudio(SnowPlaygrounds.snowPoofAudio, position);
 
         GameObject particleObj = Object.Instantiate(SnowPlaygrounds.snowballParticle, position, rotation);
         ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
         Object.Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
     }
 
-    public static void PlaySnowPoof(Vector3 position)
-    {
-        GameObject audioObject = Object.Instantiate(SnowPlaygrounds.snowmanAudio, position, Quaternion.identity);
-        AudioSource audioSource = audioObject.GetComponent<AudioSource>();
-        Object.Destroy(audioObject, audioSource.clip.length);
-    }
-
     public static void PlaySnowmanParticle(Vector3 position, Quaternion rotation)
     {
-        PlaySnowPoof(position);
+        PlayAudio(SnowPlaygrounds.snowPoofAudio, position);
 
         GameObject particleObj = Object.Instantiate(SnowPlaygrounds.snowmanParticle, position, rotation);
         ParticleSystem particleSystem = particleObj.GetComponent<ParticleSystem>();
         Object.Destroy(particleObj, particleSystem.main.duration + particleSystem.main.startLifetime.constantMax);
     }
 
-    public static void PlayJumpscareAudio(Vector3 position)
+    public static void PlayAudio(GameObject audioPrefab, Vector3 position, float volume = 1f)
     {
-        GameObject audioObject = Object.Instantiate(SnowPlaygrounds.jumpscareAudio, position, Quaternion.identity);
+        GameObject audioObject = Object.Instantiate(audioPrefab, position, Quaternion.identity);
         AudioSource audioSource = audioObject.GetComponent<AudioSource>();
-        audioSource.volume = ConfigManager.jumpscareVolume.Value;
+        audioSource.volume = volume;
         Object.Destroy(audioObject, audioSource.clip.length);
     }
 
@@ -122,7 +137,7 @@ public class SPUtilities
 
     public static void ClearSnowballDecals()
     {
-        foreach (GameObject snowballDecal in SnowPlaygrounds.snowballDecals.ToList()) Object.Destroy(snowballDecal);
+        SnowPlaygrounds.snowballDecals.ToList().ForEach(Object.Destroy);
         SnowPlaygrounds.snowballDecals.Clear();
     }
 }

@@ -1,4 +1,8 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Behaviours.Shaders;
+using LegaFusionCore.Managers;
+using LegaFusionCore.Registries;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
 using System;
@@ -47,7 +51,8 @@ public class FrostbiteAI : EnemyAI
         if (isEnemyDead || StartOfRound.Instance.allPlayersDead) return;
         if (currentHitHP >= ConfigManager.frostbiteHitMax.Value)
         {
-            KillEnemyOnOwnerClient(!SnowPlaygrounds.isSellBodies);
+            KillEnemyOnOwnerClient(true);
+            if (LFCUtilities.IsServer) SPUtilities.SpawnSnowPile(transform.position + Vector3.up, transform.rotation);
             return;
         }
 
@@ -154,7 +159,7 @@ public class FrostbiteAI : EnemyAI
         PlayThrowClientRpc();
 
         GameObject gameObject = Instantiate(SnowPlaygrounds.snowballEnemyObj, transform.position + (Vector3.up * 1.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
-        SnowballEnemy snowballEnemy = gameObject.GetComponent<GrabbableObject>() as SnowballEnemy;
+        SnowballEnemy snowballEnemy = gameObject.GetComponent<SnowballEnemy>();
         gameObject.GetComponent<NetworkObject>().Spawn();
         snowballEnemy.ThrowSnowballClientRpc(thisNetworkObject, player.transform.position + (Vector3.up * 1.5f));
 
@@ -162,9 +167,20 @@ public class FrostbiteAI : EnemyAI
         shootCooldown = UnityEngine.Random.Range(ConfigManager.frostbiteMinCooldown.Value, ConfigManager.frostbiteMaxCooldown.Value);
     }
 
+    public IEnumerator FreezePlayerCoroutine()
+    {
+        LFCStatRegistry.AddModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}SnowballEnemy", -100f);
+        yield return new WaitForSeconds(ConfigManager.frostbiteFreezeDuration.Value);
+        LFCStatRegistry.RemoveModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}SnowballEnemy");
+
+        FinalizePlayerHitServerRpc();
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    public void FinalizePlayerHitServerRpc() => hasHitPlayer = false;
+
     [ClientRpc]
-    public void PlayThrowClientRpc()
-        => creatureSFX.PlayOneShot(ThrowSound);
+    public void PlayThrowClientRpc() => creatureSFX.PlayOneShot(ThrowSound);
 
     public override void OnCollideWithPlayer(Collider other)
     {
@@ -190,17 +206,26 @@ public class FrostbiteAI : EnemyAI
         attackCoroutine = null;
     }
 
-    public void HitFrostbite()
+    public void HitFrostbite(bool isEnemySnowball = false)
     {
+        if (isEnemySnowball) SpawnSnowgunServerRpc();
         currentHitHP += ConfigManager.frostbiteHitIncrement.Value;
         _ = StartCoroutine(HitCoroutine());
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    public void SpawnSnowgunServerRpc()
+    {
+        Snowgun snowgun = LFCObjectsManager.SpawnObjectForServer(SnowPlaygrounds.snowgunObj, transform.position + (Vector3.up * 0.5f)) as Snowgun;
+        snowgun.InitializeForServer();
+        KillEnemyOnOwnerClient(true);
+    }
+
     private IEnumerator HitCoroutine()
     {
-        CustomPassManager.SetupAuraForObjects([gameObject], SnowPlaygrounds.frozenShader);
+        CustomPassManager.SetupAuraForObjects([gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}FrostbiteHit");
         yield return new WaitForSeconds(0.2f);
-        CustomPassManager.RemoveAuraFromObjects([gameObject]);
+        CustomPassManager.RemoveAuraFromObjects([gameObject], $"{SnowPlaygrounds.modName}FrostbiteHit");
     }
 
     public override void HitEnemy(int force = 1, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)
@@ -211,17 +236,18 @@ public class FrostbiteAI : EnemyAI
         WalkieTalkie.TransmitOneShotAudio(creatureSFX, enemyType.hitBodySFX);
     }
 
+    [ServerRpc(RequireOwnership = false)]
+    public void DoAnimationServerRpc(string animationState) => DoAnimationClientRpc(animationState);
+
+    [ClientRpc]
+    public void DoAnimationClientRpc(string animationState) => creatureAnimator.SetTrigger(animationState);
+
     public override void OnDestroy()
     {
         SPUtilities.PlaySnowmanParticle(transform.position, transform.rotation);
+        LFCStatRegistry.RemoveModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}SnowballEnemy");
+        CustomPassManager.RemoveAuraFromObjects([gameObject]);
+
         base.OnDestroy();
     }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void DoAnimationServerRpc(string animationState)
-        => DoAnimationClientRpc(animationState);
-
-    [ClientRpc]
-    public void DoAnimationClientRpc(string animationState)
-        => creatureAnimator.SetTrigger(animationState);
 }

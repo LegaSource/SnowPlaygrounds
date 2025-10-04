@@ -20,9 +20,9 @@ namespace SnowPlaygrounds;
 [BepInPlugin(modGUID, modName, modVersion)]
 public class SnowPlaygrounds : BaseUnityPlugin
 {
-    private const string modGUID = "Lega.SnowPlaygrounds";
-    private const string modName = "Snow Playgrounds";
-    private const string modVersion = "1.1.2";
+    internal const string modGUID = "Lega.SnowPlaygrounds";
+    internal const string modName = "Snow Playgrounds";
+    internal const string modVersion = "1.1.3";
 
     private readonly Harmony harmony = new Harmony(modGUID);
     private static readonly AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -31,11 +31,12 @@ public class SnowPlaygrounds : BaseUnityPlugin
 
     public static GameObject managerPrefab = NetworkPrefabs.CreateNetworkPrefab("SnowPlaygroundsNetworkManager");
 
-    public static bool isSellBodies = false;
-
     // Items
-    public static GameObject snowballObj;
+    public static GameObject snowballPlayerObj;
     public static GameObject snowballEnemyObj;
+    public static GameObject snowballGDObj;
+    public static GameObject snowballGunObj;
+    public static GameObject snowgunObj;
 
     // Hazards
     public static GameObject snowPileObj;
@@ -48,14 +49,15 @@ public class SnowPlaygrounds : BaseUnityPlugin
     // Materials
     public static GameObject snowballDecal;
     public static HashSet<GameObject> snowballDecals = [];
-    public static Material frozenShader;
+    public static Material snowShader;
 
     // Particles
     public static GameObject snowballParticle;
     public static GameObject snowmanParticle;
 
     // Audios
-    public static GameObject snowmanAudio;
+    public static GameObject snowPoofAudio;
+    public static GameObject snowShootAudio;
     public static GameObject jumpscareAudio;
 
     public void Awake()
@@ -70,8 +72,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
         LoadHazards();
         LoadEnemies();
         LoadDecals();
-        LoadParticles();
-        LoadAudios();
+        LoadNetworkPrefabs();
         LoadShaders();
 
         harmony.PatchAll(typeof(StartOfRoundPatch));
@@ -104,8 +105,8 @@ public class SnowPlaygrounds : BaseUnityPlugin
 
     public void LoadItems()
     {
-        snowballObj = RegisterItem(typeof(Snowball), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballItem.asset")).spawnPrefab;
-        snowballEnemyObj = RegisterItem(typeof(SnowballEnemy), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballEnemyItem.asset")).spawnPrefab;
+        snowballPlayerObj = RegisterItem(typeof(SnowballPlayer), bundle.LoadAsset<Item>("Assets/Snowball/SP_SnowballPlayerItem.asset")).spawnPrefab;
+        snowgunObj = RegisterItem(typeof(Snowgun), bundle.LoadAsset<Item>("Assets/Snowgun/SP_SnowgunItem.asset")).spawnPrefab;
     }
 
     public Item RegisterItem(Type type, Item item)
@@ -128,7 +129,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
     public void LoadHazards()
     {
         snowPileObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/SnowPile/SP_SnowPile.prefab"), ConfigManager.isSnowPileInside.Value, ConfigManager.minSnowPileInside.Value, ConfigManager.maxSnowPileInside.Value);
-        snowmanObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/Snowman/SP_Snowman.prefab"), ConfigManager.isSnowmanInside.Value, ConfigManager.minSnowmanInside.Value, ConfigManager.maxSnowmanInside.Value);
+        snowmanObj = RegisterHazard(bundle.LoadAsset<GameObject>("Assets/Snowman/Prefabs/SP_Snowman.prefab"), ConfigManager.isSnowmanInside.Value, ConfigManager.minSnowmanInside.Value, ConfigManager.maxSnowmanInside.Value);
     }
 
     public GameObject RegisterHazard(GameObject gameObject, bool isInside, float minSpawn, float maxSpawn)
@@ -162,15 +163,20 @@ public class SnowPlaygrounds : BaseUnityPlugin
         else Enemies.RegisterEnemy(frostbiteEnemy, ConfigManager.frostbiteRarity.Value, Levels.LevelTypes.None, ConfigManager.spawnLevels.Value.Split(','), terminalNode, terminalKey);
     }
 
-    public static void LoadDecals()
-        => snowballDecal = bundle.LoadAsset<GameObject>("Assets/Snowball/SP_SnowballDecal.prefab");
+    public static void LoadDecals() => snowballDecal = bundle.LoadAsset<GameObject>("Assets/Snowball/Prefabs/SP_SnowballDecal.prefab");
 
-    public static void LoadParticles()
+    public static void LoadNetworkPrefabs()
     {
         HashSet<GameObject> gameObjects =
         [
-            (snowballParticle = bundle.LoadAsset<GameObject>("Assets/Snowball/SP_SnowballParticle.prefab")),
-            (snowmanParticle = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanParticle.prefab"))
+            (snowballParticle = bundle.LoadAsset<GameObject>("Assets/Snowball/Prefabs/SP_SnowballParticle.prefab")),
+            (snowballEnemyObj = bundle.LoadAsset<GameObject>("Assets/Snowball/Prefabs/SP_SnowballEnemy.prefab")),
+            (snowballGDObj = bundle.LoadAsset<GameObject>("Assets/Snowball/Prefabs/SP_SnowballGD.prefab")),
+            (snowballGunObj = bundle.LoadAsset<GameObject>("Assets/Snowball/Prefabs/SP_SnowballGun.prefab")),
+            (snowmanParticle = bundle.LoadAsset<GameObject>("Assets/Snowman/Prefabs/SP_SnowmanParticle.prefab")),
+            (snowPoofAudio = bundle.LoadAsset<GameObject>("Assets/SFX/Prefabs/SP_SnowPoofAudio.prefab")),
+            (snowShootAudio = bundle.LoadAsset<GameObject>("Assets/SFX/Prefabs/SP_SnowShootAudio.prefab")),
+            (jumpscareAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/Prefabs/SP_JumpscareAudio.prefab"))
         ];
 
         foreach (GameObject gameObject in gameObjects)
@@ -180,23 +186,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
         }
     }
 
-    public static void LoadAudios()
-    {
-        HashSet<GameObject> gameObjects =
-        [
-            (snowmanAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_SnowmanAudio.prefab")),
-            (jumpscareAudio = bundle.LoadAsset<GameObject>("Assets/Snowman/SP_JumpscareAudio.prefab"))
-        ];
-
-        foreach (GameObject gameObject in gameObjects)
-        {
-            NetworkPrefabs.RegisterNetworkPrefab(gameObject);
-            Utilities.FixMixerGroups(gameObject);
-        }
-    }
-
-    public static void LoadShaders()
-        => frozenShader = bundle.LoadAsset<Material>("Assets/Shaders/SP_FrozenMaterial.mat");
+    public static void LoadShaders() => snowShader = bundle.LoadAsset<Material>("Assets/Shaders/SP_SnowMaterial.mat");
 
     public static void PatchOtherMods(Harmony harmony)
     {
@@ -208,7 +198,5 @@ public class SnowPlaygrounds : BaseUnityPlugin
                 prefix: new HarmonyMethod(typeof(ShipInventoryPatch).GetMethod("PreStoreItem"))
             );
         }
-
-        isSellBodies = Type.GetType("SellBodies.MyPluginInfo, SellBodies") != null;
     }
 }
