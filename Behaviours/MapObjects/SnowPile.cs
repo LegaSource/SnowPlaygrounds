@@ -26,23 +26,14 @@ public class SnowPile : NetworkBehaviour
         if (grabbableObject != null && grabbableObject is Snowgun snowgun && snowgun.currentStackedItems < ConfigManager.snowgunAmount.Value)
         {
             int nbSnowball = ConfigManager.snowgunAmount.Value - snowgun.currentStackedItems;
-            RemoveSnowballServerRpc(nbSnowball);
-            ReloadSnowgunServerRpc(snowgun.GetComponent<NetworkObject>(), nbSnowball);
+            RemoveSnowballEveryoneRpc(nbSnowball);
+            snowgun.UpdateStackedItemsEveryoneRpc(nbSnowball);
             return;
         }
         ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void ReloadSnowgunServerRpc(NetworkObjectReference obj, int nbSnowball)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        Snowgun snowgun = networkObject.gameObject.GetComponentInChildren<Snowgun>();
-        snowgun.UpdateStackedItemsClientRpc(nbSnowball);
-    }
-
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void ForceGrabObjectServerRpc(int playerId)
     {
         try
@@ -54,7 +45,7 @@ public class SnowPile : NetworkBehaviour
             NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
             networkObject.Spawn();
 
-            ForceGrabObjectClientRpc(networkObject, playerId);
+            ForceGrabObjectEveryoneRpc(networkObject, playerId);
         }
         catch (Exception arg)
         {
@@ -62,8 +53,8 @@ public class SnowPile : NetworkBehaviour
         }
     }
 
-    [ClientRpc]
-    public void ForceGrabObjectClientRpc(NetworkObjectReference obj, int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ForceGrabObjectEveryoneRpc(NetworkObjectReference obj, int playerId)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
@@ -98,16 +89,13 @@ public class SnowPile : NetworkBehaviour
             if (!player.isTestingPlayer) player.GrabObjectServerRpc(player.currentlyGrabbingObject.NetworkObject);
             if (player.grabObjectCoroutine != null) player.StopCoroutine(player.grabObjectCoroutine);
             player.grabObjectCoroutine = player.StartCoroutine(player.GrabObject());
-            snowball.InitializeServerRpc(Mathf.Min(ConfigManager.snowballAmount.Value, currentStackedItems));
-            RemoveSnowballServerRpc(ConfigManager.snowballAmount.Value);
+            snowball.InitializeEveryoneRpc(Mathf.Min(ConfigManager.snowballAmount.Value, currentStackedItems));
+            RemoveSnowballEveryoneRpc(ConfigManager.snowballAmount.Value);
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void RemoveSnowballServerRpc(int nbSnowball) => RemoveSnowballClientRpc(nbSnowball);
-
-    [ClientRpc]
-    public void RemoveSnowballClientRpc(int nbSnowball)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void RemoveSnowballEveryoneRpc(int nbSnowball)
     {
         float factor = 0.05f * nbSnowball;
         transform.localScale -= initialScale * Mathf.Max(factor, 0f);

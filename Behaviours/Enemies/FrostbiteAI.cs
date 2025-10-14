@@ -93,7 +93,7 @@ public class FrostbiteAI : EnemyAI
                 if (FoundClosestPlayerInRange(30, 15))
                 {
                     StopSearch(currentSearch);
-                    DoAnimationClientRpc("startChase");
+                    DoAnimationEveryoneRpc("startChase");
                     SwitchToBehaviourClientRpc((int)State.CHASING);
                     return;
                 }
@@ -104,13 +104,13 @@ public class FrostbiteAI : EnemyAI
                 if (!TargetClosestPlayerInAnyCase() || (distanceWithPlayer > 30f && !CheckLineOfSightForPosition(targetPlayer.transform.position)))
                 {
                     StartSearch(transform.position);
-                    DoAnimationClientRpc("startMove");
+                    DoAnimationEveryoneRpc("startMove");
                     SwitchToBehaviourClientRpc((int)State.WANDERING);
                     return;
                 }
                 if (!hasHitPlayer && distanceWithPlayer <= 20f && CheckLineOfSightForPosition(targetPlayer.transform.position))
                 {
-                    DoAnimationClientRpc("startThrow");
+                    DoAnimationEveryoneRpc("startThrow");
                     SwitchToBehaviourClientRpc((int)State.ATTACKING);
                     return;
                 }
@@ -121,7 +121,7 @@ public class FrostbiteAI : EnemyAI
                 if (hasHitPlayer || Vector3.Distance(transform.position, targetPlayer.transform.position) > 20f || !CheckLineOfSightForPosition(targetPlayer.transform.position))
                 {
                     lastShootTimer = 0f;
-                    DoAnimationClientRpc("startChase");
+                    DoAnimationEveryoneRpc("startChase");
                     SwitchToBehaviourClientRpc((int)State.CHASING);
                     return;
                 }
@@ -156,12 +156,12 @@ public class FrostbiteAI : EnemyAI
     {
         if (lastShootTimer < shootCooldown) return;
 
-        PlayThrowClientRpc();
+        PlayThrowEveryoneRpc();
 
         GameObject gameObject = Instantiate(SnowPlaygrounds.snowballEnemyObj, transform.position + (Vector3.up * 1.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
         SnowballEnemy snowballEnemy = gameObject.GetComponent<SnowballEnemy>();
         gameObject.GetComponent<NetworkObject>().Spawn();
-        snowballEnemy.ThrowSnowballClientRpc(thisNetworkObject, player.transform.position + (Vector3.up * 1.5f));
+        snowballEnemy.ThrowSnowballEveryoneRpc(thisNetworkObject, player.transform.position + (Vector3.up * 1.5f));
 
         lastShootTimer = 0f;
         shootCooldown = UnityEngine.Random.Range(ConfigManager.frostbiteMinCooldown.Value, ConfigManager.frostbiteMaxCooldown.Value);
@@ -176,11 +176,11 @@ public class FrostbiteAI : EnemyAI
         FinalizePlayerHitServerRpc();
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void FinalizePlayerHitServerRpc() => hasHitPlayer = false;
 
-    [ClientRpc]
-    public void PlayThrowClientRpc() => creatureSFX.PlayOneShot(ThrowSound);
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void PlayThrowEveryoneRpc() => creatureSFX.PlayOneShot(ThrowSound);
 
     public override void OnCollideWithPlayer(Collider other)
     {
@@ -201,7 +201,7 @@ public class FrostbiteAI : EnemyAI
 
         yield return new WaitForSeconds(0.8f);
 
-        DoAnimationServerRpc("startMove");
+        DoAnimationEveryoneRpc("startMove");
         SwitchToBehaviourServerRpc((int)State.WANDERING);
         attackCoroutine = null;
     }
@@ -213,7 +213,7 @@ public class FrostbiteAI : EnemyAI
         _ = StartCoroutine(HitCoroutine());
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void SpawnSnowgunServerRpc()
     {
         Snowgun snowgun = LFCObjectsManager.SpawnObjectForServer(SnowPlaygrounds.snowgunObj, transform.position + (Vector3.up * 0.5f)) as Snowgun;
@@ -236,11 +236,8 @@ public class FrostbiteAI : EnemyAI
         WalkieTalkie.TransmitOneShotAudio(creatureSFX, enemyType.hitBodySFX);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void DoAnimationServerRpc(string animationState) => DoAnimationClientRpc(animationState);
-
-    [ClientRpc]
-    public void DoAnimationClientRpc(string animationState) => creatureAnimator.SetTrigger(animationState);
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void DoAnimationEveryoneRpc(string animationState) => creatureAnimator.SetTrigger(animationState);
 
     public override void OnDestroy()
     {

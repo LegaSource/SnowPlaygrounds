@@ -57,6 +57,6 @@ internal class RoundManagerPatch
 
         System.Random random = new System.Random();
         List<Snowman> randomSnowmen = SnowPlaygrounds.snowmen.OrderBy(s => random.Next()).Take(random.Next(ConfigManager.minFakeSnowman.Value, ConfigManager.maxFakeSnowman.Value)).ToList();
-        randomSnowmen.ForEach(s => SnowPlaygroundsNetworkManager.Instance.AddFakeSnowmanClientRpc(s.GetComponent<NetworkObject>()));
+        randomSnowmen.ForEach(s => SnowPlaygroundsNetworkManager.Instance.AddFakeSnowmanEveryoneRpc(s.GetComponent<NetworkObject>()));
     }
 }

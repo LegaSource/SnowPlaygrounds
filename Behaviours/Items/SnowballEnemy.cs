@@ -16,8 +16,8 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
     public bool deactivated = false;
     public bool hasBeenHit = false;
 
-    [ClientRpc]
-    public void ThrowSnowballClientRpc(NetworkObjectReference enemyObject, Vector3 targetPosition)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ThrowSnowballEveryoneRpc(NetworkObjectReference enemyObject, Vector3 targetPosition)
     {
         if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
 
@@ -81,7 +81,7 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
         if (HandlePlayerHit(other)) return;
         if (SnowballManager.HandleSnowmanHit(other))
         {
-            DestroySnowballClientRpc();
+            DestroySnowballEveryoneRpc();
             Destroy(gameObject);
         }
     }
@@ -91,7 +91,7 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
         EnemyAICollisionDetect enemyCollision = other.GetComponent<EnemyAICollisionDetect>();
         if (enemyCollision == null || (enemyCollision.mainScript is FrostbiteAI && !hasBeenHit)) return false;
 
-        SnowPlaygroundsNetworkManager.Instance.SnowballFreezeEnemyClientRpc(enemyCollision.mainScript.NetworkObject, other.ClosestPoint(transform.position), throwingEnemy.transform.rotation, isEnemySnowball: true);
+        SnowPlaygroundsNetworkManager.Instance.SnowballFreezeEnemyEveryoneRpc(enemyCollision.mainScript.NetworkObject, other.ClosestPoint(transform.position), throwingEnemy.transform.rotation, isEnemySnowball: true);
         return true;
     }
 
@@ -103,12 +103,12 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
         if (player == null) return false;
 
         throwingEnemy.hasHitPlayer = true;
-        HitPlayerClientRpc((int)player.playerClientId, other.ClosestPoint(transform.position));
+        HitPlayerEveryoneRpc((int)player.playerClientId, other.ClosestPoint(transform.position));
         return true;
     }
 
-    [ClientRpc]
-    public void HitPlayerClientRpc(int playerId, Vector3 position)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void HitPlayerEveryoneRpc(int playerId, Vector3 position)
     {
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         SPUtilities.SnowballImpact(position, player.transform.rotation);
@@ -127,18 +127,15 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
         if (playerWhoHit == null) return true;
 
         if (playerWhoHit.currentlyHeldObjectServer is Shovel)
-            ThrowBackSnowballServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+            ThrowBackSnowballEveryoneRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
         else
             DestroySnowballServerRpc();
 
         return true;
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void ThrowBackSnowballServerRpc(int playerId) => ThrowBackSnowballClientRpc(playerId);
-
-    [ClientRpc]
-    public void ThrowBackSnowballClientRpc(int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ThrowBackSnowballEveryoneRpc(int playerId)
     {
         hasBeenHit = true;
         SnowballManager.ThrowSnowballFromPlayer(StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>(), rigidbody, 45f);
@@ -146,13 +143,13 @@ public class SnowballEnemy : NetworkBehaviour, IHittable
         _ = StartCoroutine(DetectGroundAndWalls());
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void DestroySnowballServerRpc()
     {
         Destroy(gameObject);
-        DestroySnowballClientRpc();
+        DestroySnowballEveryoneRpc();
     }
 
-    [ClientRpc]
-    public void DestroySnowballClientRpc() => deactivated = true;
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void DestroySnowballEveryoneRpc() => deactivated = true;
 }

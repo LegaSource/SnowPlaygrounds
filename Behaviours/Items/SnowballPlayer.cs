@@ -1,5 +1,6 @@
 ﻿using GameNetcodeStuff;
 using LegaFusionCore.Managers.NetworkManagers;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Managers;
 using System;
 using System.Collections;
@@ -18,11 +19,8 @@ public class SnowballPlayer : PhysicsProp
 
     public Coroutine throwCooldownCoroutine;
 
-    [ServerRpc(RequireOwnership = false)]
-    public void InitializeServerRpc(int nbSnowball) => InitializeClientRpc(nbSnowball);
-
-    [ClientRpc]
-    public void InitializeClientRpc(int nbSnowball) => currentStackedItems = nbSnowball;
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void InitializeEveryoneRpc(int nbSnowball) => currentStackedItems = nbSnowball;
 
     public override void Update()
     {
@@ -34,11 +32,7 @@ public class SnowballPlayer : PhysicsProp
         base.ItemActivate(used, buttonDown);
 
         if (!buttonDown || playerHeldBy == null) return;
-        if (throwCooldownCoroutine == null)
-        {
-            throwCooldownCoroutine = StartCoroutine(ThrowCooldownCoroutine());
-            SetControlTipsForItem();
-        }
+        throwCooldownCoroutine ??= StartCoroutine(ThrowCooldownCoroutine());
     }
 
     private IEnumerator ThrowCooldownCoroutine()
@@ -48,12 +42,14 @@ public class SnowballPlayer : PhysicsProp
         throwCooldownCoroutine = null;
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void DropSnowballServerRpc(int playerId) => DropSnowballClientRpc(playerId, InstantiateSnowballToThrow());
+    [Rpc(SendTo.Server, RequireOwnership = false)]
+    public void DropSnowballServerRpc(int playerId) => DropSnowballEveryoneRpc(playerId, InstantiateSnowballToThrow());
 
-    [ClientRpc]
-    public void DropSnowballClientRpc(int playerId, NetworkObjectReference obj)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void DropSnowballEveryoneRpc(int playerId, NetworkObjectReference obj)
     {
+        UpdateStackedItems();
+
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         SnowballPlayer snowball = InitializeSnowballToThrow(obj, player);
         if (snowball == null) return;
@@ -65,12 +61,14 @@ public class SnowballPlayer : PhysicsProp
         _ = snowball.StartCoroutine(snowball.DetectGroundAndWalls());
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void ThrowSnowballServerRpc() => ThrowSnowballClientRpc(InstantiateSnowballToThrow());
+    [Rpc(SendTo.Server, RequireOwnership = false)]
+    public void ThrowSnowballServerRpc() => ThrowSnowballEveryoneRpc(InstantiateSnowballToThrow());
 
-    [ClientRpc]
-    public void ThrowSnowballClientRpc(NetworkObjectReference obj)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ThrowSnowballEveryoneRpc(NetworkObjectReference obj)
     {
+        UpdateStackedItems();
+
         SnowballPlayer snowball = InitializeSnowballToThrow(obj);
         if (snowball == null) return;
 
@@ -88,10 +86,8 @@ public class SnowballPlayer : PhysicsProp
             GameObject gameObject = Instantiate(SnowPlaygrounds.snowballPlayerObj, transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer);
             networkObject = gameObject.GetComponent<NetworkObject>();
             networkObject.Spawn();
-            currentStackedItems--;
             return networkObject;
         }
-        HUDManager.Instance.ClearControlTips();
         return GetComponent<NetworkObject>();
     }
 
@@ -134,22 +130,28 @@ public class SnowballPlayer : PhysicsProp
     private void OnTriggerEnter(Collider other)
     {
         if (other == null || !isThrown || throwingPlayer == null) return;
-        if (GameNetworkManager.Instance.localPlayerController != throwingPlayer) return;
+        if (!LFCUtilities.IsServer) return;
 
         if (SnowballManager.HandleEnemyHitFromPlayer(other, transform.position, throwingPlayer)
             || SnowballManager.HandlePlayerHitFromPlayer(other, transform.position, throwingPlayer)
             || SnowballManager.HandleSnowmanHit(other))
         {
             isThrown = false;
-            LFCNetworkManager.Instance.DestroyObjectServerRpc(GetComponent<NetworkObject>());
+            LFCNetworkManager.Instance.DestroyObjectEveryoneRpc(GetComponent<NetworkObject>());
         }
     }
 
-    [ClientRpc]
-    public void DestroySnowballClientRpc()
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void DestroySnowballEveryoneRpc()
     {
         isThrown = true;
         DestroyObjectInHand(playerHeldBy);
+    }
+
+    public void UpdateStackedItems()
+    {
+        currentStackedItems--;
+        if (isHeld && !isPocketed && playerHeldBy != null && playerHeldBy == GameNetworkManager.Instance.localPlayerController) SetControlTipsForItem();
     }
 
     public override void SetControlTipsForItem()

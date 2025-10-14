@@ -44,18 +44,18 @@ public class Snowman : NetworkBehaviour, IHittable
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void SpawnFrostbiteServerRpc()
     {
-        SpawnFrostbiteClientRpc();
+        SpawnFrostbiteEveryoneRpc();
 
         GameObject gameObject = Instantiate(SnowPlaygrounds.frostbiteEnemy.enemyPrefab, transform.position, transform.rotation);
         gameObject.GetComponentInChildren<NetworkObject>().Spawn(true);
         gameObject.GetComponent<FrostbiteAI>().moveTowardsDestination = true;
     }
 
-    [ClientRpc]
-    public void SpawnFrostbiteClientRpc()
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SpawnFrostbiteEveryoneRpc()
     {
         if (ConfigManager.isJumpscareOn.Value) SPUtilities.PlayAudio(SnowPlaygrounds.jumpscareAudio, transform.position, ConfigManager.jumpscareVolume.Value);
         if (LFCUtilities.IsServer) Destroy(gameObject);
@@ -64,7 +64,7 @@ public class Snowman : NetworkBehaviour, IHittable
     public void SnowmanInteraction()
     {
         if (currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value) BuildSnowman();
-        else if (hidingPlayer == null) EnterSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+        else if (hidingPlayer == null) EnterSnowmanEveryoneRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
     }
 
     public void BuildSnowman()
@@ -84,14 +84,11 @@ public class Snowman : NetworkBehaviour, IHittable
             }
         }
 
-        if (nbSnowball > 0) BuildSnowmanServerRpc(nbSnowball);
+        if (nbSnowball > 0) BuildSnowmanEveryoneRpc(nbSnowball);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void BuildSnowmanServerRpc(int nbSnowball) => BuildSnowmanClientRpc(nbSnowball);
-
-    [ClientRpc]
-    public void BuildSnowmanClientRpc(int nbSnowball)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void BuildSnowmanEveryoneRpc(int nbSnowball)
     {
         currentStackedSnowball += nbSnowball;
         if (currentStackedSnowball >= ConfigManager.amountSnowballToBuild.Value)
@@ -109,11 +106,8 @@ public class Snowman : NetworkBehaviour, IHittable
         RefreshHoverTip();
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void EnterSnowmanServerRpc(int playerId) => EnterSnowmanClientRpc(playerId);
-
-    [ClientRpc]
-    public void EnterSnowmanClientRpc(int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void EnterSnowmanEveryoneRpc(int playerId)
     {
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         player.DropAllHeldItems();
@@ -142,13 +136,10 @@ public class Snowman : NetworkBehaviour, IHittable
         }
     }
 
-    public void ExitSnowman() => ExitSnowmanServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+    public void ExitSnowman() => ExitSnowmanEveryoneRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
 
-    [ServerRpc(RequireOwnership = false)]
-    public void ExitSnowmanServerRpc(int playerId) => ExitSnowmanClientRpc(playerId);
-
-    [ClientRpc]
-    public void ExitSnowmanClientRpc(int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ExitSnowmanEveryoneRpc(int playerId)
     {
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
 
@@ -181,14 +172,11 @@ public class Snowman : NetworkBehaviour, IHittable
         if (other == null || !isPlayerHiding) return;
 
         EnemyAICollisionDetect collisionDetect = other.GetComponent<EnemyAICollisionDetect>();
-        if (collisionDetect != null) FreezeEnemyServerRpc(collisionDetect.mainScript.NetworkObject);
+        if (collisionDetect != null) FreezeEnemyEveryoneRpc(collisionDetect.mainScript.NetworkObject);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void FreezeEnemyServerRpc(NetworkObjectReference enemyObject) => FreezeEnemyClientRpc(enemyObject);
-
-    [ClientRpc]
-    public void FreezeEnemyClientRpc(NetworkObjectReference enemyObject)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void FreezeEnemyEveryoneRpc(NetworkObjectReference enemyObject)
     {
         if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
 
@@ -211,7 +199,7 @@ public class Snowman : NetworkBehaviour, IHittable
         return true;
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void SpawnSnowPileServerRpc()
     {
         SPUtilities.SpawnSnowPile(transform.position + Vector3.up, transform.rotation);

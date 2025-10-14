@@ -13,8 +13,8 @@ public class SnowballGun : NetworkBehaviour
     public PlayerControllerB throwingPlayer;
     public bool deactivated = false;
 
-    [ClientRpc]
-    public void ShootSnowballClientRpc(int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ShootSnowballEveryoneRpc(int playerId)
     {
         throwingPlayer = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         // Fixer la position de la boule de neige
@@ -51,17 +51,14 @@ public class SnowballGun : NetworkBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (other == null || throwingPlayer == null) return;
-        if (GameNetworkManager.Instance.localPlayerController != throwingPlayer) return;
+        if (!LFCUtilities.IsServer) return;
 
         if (SnowballManager.HandleEnemyHitFromPlayer(other, transform.position, throwingPlayer)
             || SnowballManager.HandlePlayerHitFromPlayer(other, transform.position, throwingPlayer)
             || SnowballManager.HandleSnowmanHit(other))
         {
             deactivated = true;
-            DestroySnowballServerRpc();
+            Destroy(gameObject);
         }
     }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void DestroySnowballServerRpc() => Destroy(gameObject);
 }

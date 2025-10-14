@@ -14,8 +14,8 @@ public class SnowballGD : NetworkBehaviour
     public PlayerControllerB throwingPlayer;
     public bool deactivated = false;
 
-    [ClientRpc]
-    public void ShootSnowballClientRpc(int playerId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ShootSnowballEveryoneRpc(int playerId)
     {
         throwingPlayer = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         // Fixer la position de la boule de neige
@@ -49,7 +49,7 @@ public class SnowballGD : NetworkBehaviour
         if (LFCUtilities.IsServer)
         {
             Snowman snowman = SPUtilities.SpawnSnowman(position, throwingPlayer.transform.rotation);
-            if (snowman != null) SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanClientRpc((int)throwingPlayer.playerClientId, snowman.GetComponent<NetworkObject>(), ConfigManager.amountSnowballToBuild.Value);
+            if (snowman != null) SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanEveryoneRpc((int)throwingPlayer.playerClientId, snowman.GetComponent<NetworkObject>(), ConfigManager.amountSnowballToBuild.Value);
 
             Destroy(gameObject);
         }
@@ -58,14 +58,14 @@ public class SnowballGD : NetworkBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (other == null || throwingPlayer == null) return;
-        if (GameNetworkManager.Instance.localPlayerController != throwingPlayer) return;
+        if (!LFCUtilities.IsServer) return;
 
         if (HandleEnemyHitFromPlayer(other, throwingPlayer)
             || HandlePlayerHitFromPlayer(other, throwingPlayer)
             || SnowballManager.HandleSnowmanHit(other))
         {
             deactivated = true;
-            DestroySnowballServerRpc();
+            Destroy(gameObject);
         }
     }
 
@@ -74,7 +74,7 @@ public class SnowballGD : NetworkBehaviour
         EnemyAICollisionDetect enemyCollision = other.GetComponent<EnemyAICollisionDetect>();
         if (enemyCollision == null) return false;
 
-        SnowPlaygroundsNetworkManager.Instance.SpawnGlacialDecoyServerRpc((int)throwingPlayer.playerClientId, enemyCollision.mainScript.NetworkObject);
+        SnowPlaygroundsNetworkManager.Instance.ApplyFrostEveryoneRpc((int)throwingPlayer.playerClientId, enemyCollision.mainScript.NetworkObject);
         return true;
     }
 
@@ -83,10 +83,7 @@ public class SnowballGD : NetworkBehaviour
         PlayerControllerB player = other.GetComponent<PlayerControllerB>();
         if (player == null || player == throwingPlayer) return false;
 
-        SnowPlaygroundsNetworkManager.Instance.SpawnGlacialDecoyServerRpc((int)throwingPlayer.playerClientId, (int)player.playerClientId);
+        SnowPlaygroundsNetworkManager.Instance.ApplyFrostEveryoneRpc((int)throwingPlayer.playerClientId, (int)player.playerClientId);
         return true;
     }
-
-    [ServerRpc(RequireOwnership = false)]
-    public void DestroySnowballServerRpc() => Destroy(gameObject);
 }

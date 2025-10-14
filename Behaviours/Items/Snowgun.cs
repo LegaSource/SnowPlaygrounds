@@ -15,11 +15,11 @@ public class Snowgun : PhysicsProp
     public void InitializeForServer()
     {
         int value = UnityEngine.Random.Range(20, 50);
-        InitializeClientRpc(value);
+        InitializeEveryoneRpc(value);
     }
 
-    [ClientRpc]
-    public void InitializeClientRpc(int value)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void InitializeEveryoneRpc(int value)
     {
         SetScrapValue(value);
         LFCUtilities.SetAddonComponent<GlacialDecoy>(this, Constants.GLACIAL_DECOY);
@@ -40,7 +40,7 @@ public class Snowgun : PhysicsProp
         if (currentStackedItems > 0) ShootGunServerRpc();
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void ShootGunServerRpc()
     {
         if (lastShootTimer < shootCooldown) return;
@@ -48,14 +48,14 @@ public class Snowgun : PhysicsProp
         GameObject gameObject = Instantiate(SnowPlaygrounds.snowballGunObj, transform.position - (transform.forward * 0.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
         SnowballGun snowballGun = gameObject.GetComponent<SnowballGun>();
         gameObject.GetComponent<NetworkObject>().Spawn();
-        snowballGun.ShootSnowballClientRpc((int)playerHeldBy.playerClientId);
-        UpdateStackedItemsClientRpc(-1);
+        snowballGun.ShootSnowballEveryoneRpc((int)playerHeldBy.playerClientId);
+        UpdateStackedItemsEveryoneRpc(-1);
 
         lastShootTimer = 0f;
     }
 
-    [ClientRpc]
-    public void UpdateStackedItemsClientRpc(int nbSnowball)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void UpdateStackedItemsEveryoneRpc(int nbSnowball)
     {
         currentStackedItems += nbSnowball;
         if (isHeld && !isPocketed && playerHeldBy != null && playerHeldBy == GameNetworkManager.Instance.localPlayerController) SetControlTipsForItem();

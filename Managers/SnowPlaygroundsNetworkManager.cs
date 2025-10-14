@@ -14,7 +14,7 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
 
     public void Awake() => Instance = this;
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void SpawnSnowmanFromSnowballServerRpc(int playerId, NetworkObjectReference obj, Vector3 position, Quaternion rotation)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
@@ -27,13 +27,13 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
             NetworkObject spawnedNetworkObject = gameObject.GetComponent<NetworkObject>();
             spawnedNetworkObject.Spawn(true);
 
-            SpawnSnowmanClientRpc(playerId, spawnedNetworkObject, snowball.currentStackedItems);
-            snowball.DestroySnowballClientRpc();
+            SpawnSnowmanEveryoneRpc(playerId, spawnedNetworkObject, snowball.currentStackedItems);
+            snowball.DestroySnowballEveryoneRpc();
         }
     }
 
-    [ClientRpc]
-    public void SpawnSnowmanClientRpc(int playerId, NetworkObjectReference obj, int nbSnowball)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SpawnSnowmanEveryoneRpc(int playerId, NetworkObjectReference obj, int nbSnowball)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
@@ -54,8 +54,8 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         }
     }
 
-    [ClientRpc]
-    public void AddFakeSnowmanClientRpc(NetworkObjectReference obj)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void AddFakeSnowmanEveryoneRpc(NetworkObjectReference obj)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
 
@@ -64,7 +64,7 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         snowman.isEnemyHiding = true;
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void DestroySnowmanServerRpc(NetworkObjectReference obj)
     {
         if (!obj.TryGet(out NetworkObject networkObject)) return;
@@ -73,12 +73,8 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         Destroy(snowman.gameObject);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void SnowballFreezeEnemyServerRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation)
-        => SnowballFreezeEnemyClientRpc(enemyObject, position, rotation);
-
-    [ClientRpc]
-    public void SnowballFreezeEnemyClientRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation, bool isEnemySnowball = false)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SnowballFreezeEnemyEveryoneRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation, bool isEnemySnowball = false)
     {
         if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
 
@@ -91,11 +87,8 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void SnowballHitPlayerServerRpc(int playerId, Vector3 force, Vector3 position) => SnowballHitPlayerClientRpc(playerId, force, position);
-
-    [ClientRpc]
-    public void SnowballHitPlayerClientRpc(int playerId, Vector3 force, Vector3 position)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SnowballHitPlayerEveryoneRpc(int playerId, Vector3 force, Vector3 position)
     {
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
         SPUtilities.SnowballImpact(position, player.transform.rotation);
@@ -107,20 +100,17 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         }
     }
 
-    [ServerRpc(RequireOwnership = false)]
+    [Rpc(SendTo.Server, RequireOwnership = false)]
     public void ShootGlacialDecoyServerRpc(int playerId)
     {
         GameObject gameObject = Instantiate(SnowPlaygrounds.snowballGDObj, transform.position - (transform.forward * 0.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
         SnowballGD snowballGD = gameObject.GetComponent<SnowballGD>();
         gameObject.GetComponent<NetworkObject>().Spawn();
-        snowballGD.ShootSnowballClientRpc(playerId);
+        snowballGD.ShootSnowballEveryoneRpc(playerId);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void SpawnGlacialDecoyServerRpc(int playerId, NetworkObjectReference enemyObj) => ApplyFrostClientRpc(playerId, enemyObj);
-
-    [ClientRpc]
-    public void ApplyFrostClientRpc(int playerId, NetworkObjectReference enemyObj)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ApplyFrostEveryoneRpc(int playerId, NetworkObjectReference enemyObj)
     {
         if (!enemyObj.TryGet(out NetworkObject networkObjectEnemy)) return;
 
@@ -128,11 +118,8 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
         LFCStatusEffectRegistry.ApplyStatus(enemy.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 100);
     }
 
-    [ServerRpc(RequireOwnership = false)]
-    public void SpawnGlacialDecoyServerRpc(int playerId, int targetId) => ApplyFrostClientRpc(playerId, targetId);
-
-    [ClientRpc]
-    public void ApplyFrostClientRpc(int playerId, int targetId)
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void ApplyFrostEveryoneRpc(int playerId, int targetId)
     {
         PlayerControllerB targetedPlayer = StartOfRound.Instance.allPlayerObjects[targetId].GetComponent<PlayerControllerB>();
         LFCStatusEffectRegistry.ApplyStatus(targetedPlayer.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 10);

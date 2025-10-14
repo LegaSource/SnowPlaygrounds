@@ -25,7 +25,7 @@ public static class SnowballManager
         EnemyAICollisionDetect enemyCollision = other.GetComponent<EnemyAICollisionDetect>();
         if (enemyCollision == null) return false;
 
-        SnowPlaygroundsNetworkManager.Instance.SnowballFreezeEnemyServerRpc(enemyCollision.mainScript.NetworkObject, other.ClosestPoint(position), throwingPlayer.transform.rotation);
+        SnowPlaygroundsNetworkManager.Instance.SnowballFreezeEnemyEveryoneRpc(enemyCollision.mainScript.NetworkObject, other.ClosestPoint(position), throwingPlayer.transform.rotation);
         return true;
     }
 
@@ -35,7 +35,7 @@ public static class SnowballManager
         if (player == null || player == throwingPlayer) return false;
 
         Vector3 force = (player.transform.position - throwingPlayer.transform.position).normalized * ConfigManager.snowballPushForce.Value;
-        SnowPlaygroundsNetworkManager.Instance.SnowballHitPlayerServerRpc((int)player.playerClientId, force, other.ClosestPoint(position));
+        SnowPlaygroundsNetworkManager.Instance.SnowballHitPlayerEveryoneRpc((int)player.playerClientId, force, other.ClosestPoint(position));
 
         return true;
     }
@@ -46,7 +46,7 @@ public static class SnowballManager
         if (snowman == null) return false;
 
         if (snowman.isEnemyHiding) snowman.SpawnFrostbiteServerRpc();
-        else if (snowman.hidingPlayer != null) snowman.ExitSnowmanClientRpc((int)snowman.hidingPlayer.playerClientId);
+        else if (snowman.hidingPlayer != null) snowman.ExitSnowmanEveryoneRpc((int)snowman.hidingPlayer.playerClientId);
         else Object.Destroy(snowman.gameObject);
 
         return true;

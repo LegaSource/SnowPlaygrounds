@@ -122,7 +122,7 @@ public class SPUtilities
 
             if (snowman.isPlayerHiding)
             {
-                snowman.ExitSnowmanClientRpc((int)snowman.hidingPlayer.playerClientId);
+                snowman.ExitSnowmanEveryoneRpc((int)snowman.hidingPlayer.playerClientId);
                 continue;
             }
 
