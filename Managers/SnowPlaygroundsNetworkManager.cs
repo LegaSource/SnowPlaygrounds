@@ -1,6 +1,5 @@
 ﻿using GameNetcodeStuff;
-using LegaFusionCore.Registries;
-using SnowPlaygrounds.Behaviours.Enemies;
+using LegaFusionCore.Managers;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using Unity.Netcode;
@@ -14,114 +13,56 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
 
     public void Awake() => Instance = this;
 
-    [Rpc(SendTo.Server, RequireOwnership = false)]
-    public void SpawnSnowmanFromSnowballServerRpc(int playerId, NetworkObjectReference obj, Vector3 position, Quaternion rotation)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        SnowballPlayer snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as SnowballPlayer;
-        if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
-        {
-            GameObject gameObject = Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, rotation.eulerAngles.y, rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
-            gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * snowball.currentStackedItems;
-            NetworkObject spawnedNetworkObject = gameObject.GetComponent<NetworkObject>();
-            spawnedNetworkObject.Spawn(true);
-
-            SpawnSnowmanEveryoneRpc(playerId, spawnedNetworkObject, snowball.currentStackedItems);
-            snowball.DestroySnowballEveryoneRpc();
-        }
-    }
-
-    [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void SpawnSnowmanEveryoneRpc(int playerId, NetworkObjectReference obj, int nbSnowball)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
-        snowman.currentStackedSnowball = nbSnowball;
-        snowman.RefreshHoverTip();
-
-        PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-        if (Physics.Raycast(player.gameplayCamera.transform.position + player.gameplayCamera.transform.forward, Vector3.down, out RaycastHit hitInfo, 80f, 1342179585, QueryTriggerInteraction.Ignore))
-        {
-            PlayerPhysicsRegion physicsRegion = hitInfo.collider.gameObject.transform.GetComponentInChildren<PlayerPhysicsRegion>();
-            if (physicsRegion?.parentNetworkObject != null && physicsRegion.allowDroppingItems && physicsRegion.itemDropCollider.ClosestPoint(hitInfo.point) == hitInfo.point)
-            {
-                snowman.transform.SetParent(physicsRegion.physicsTransform);
-                snowman.transform.localPosition = physicsRegion.physicsTransform.InverseTransformPoint(hitInfo.point + (Vector3.up * 0.04f) + physicsRegion.addPositionOffsetToItems);
-                snowman.transform.rotation = Quaternion.Euler(0f, player.transform.rotation.eulerAngles.y, player.transform.rotation.eulerAngles.z);
-            }
-        }
-    }
-
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
     public void AddFakeSnowmanEveryoneRpc(NetworkObjectReference obj)
     {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
-        snowman.snowmanTrigger.interactable = false;
-        snowman.isEnemyHiding = true;
-    }
-
-    [Rpc(SendTo.Server, RequireOwnership = false)]
-    public void DestroySnowmanServerRpc(NetworkObjectReference obj)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
-        Destroy(snowman.gameObject);
-    }
-
-    [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void SnowballFreezeEnemyEveryoneRpc(NetworkObjectReference enemyObject, Vector3 position, Quaternion rotation, bool isEnemySnowball = false)
-    {
-        if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
-
-        SPUtilities.SnowballImpact(position, rotation);
-        EnemyAI enemy = networkObject.gameObject.GetComponentInChildren<EnemyAI>();
-        if (enemy != null)
+        if (obj.TryGet(out NetworkObject networkObject))
         {
-            if (enemy is FrostbiteAI frostbite) frostbite.HitFrostbite(isEnemySnowball);
-            else SPUtilities.FreezeEnemy(enemy, ConfigManager.snowballSlowdownDuration.Value, ConfigManager.snowballSlowdownFactor.Value);
+            Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
+            snowman.snowmanTrigger.interactable = false;
+            snowman.isEnemyHiding = true;
         }
     }
 
-    [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void SnowballHitPlayerEveryoneRpc(int playerId, Vector3 force, Vector3 position)
+    [Rpc(SendTo.Server, RequireOwnership = false)]
+    public void ThrowFrostBallServerRpc(int playerId, Vector3 position, Vector3 direction)
+    {
+        if (direction.sqrMagnitude < 0.5f)
+            direction = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>().transform.forward;
+        direction = direction.normalized;
+
+        GameObject gameObject = Instantiate(SnowPlaygrounds.frostBallObj, position, Quaternion.identity);
+        gameObject.GetComponent<NetworkObject>().Spawn();
+        gameObject.GetComponent<FrostBall>().ThrowFromPlayerEveryoneRpc(playerId, position, direction);
+    }
+
+    [Rpc(SendTo.Server, RequireOwnership = false)]
+    public void SpawnSnowmanServerRpc(int playerId, int nbSnowBall)
     {
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-        SPUtilities.SnowballImpact(position, player.transform.rotation);
-
-        if (GameNetworkManager.Instance.localPlayerController == player)
+        Vector3 position = player.gameplayCamera.transform.position + player.gameplayCamera.transform.forward;
+        if (Physics.Raycast(position, Vector3.down, out RaycastHit hit, 5f, StartOfRound.Instance.collidersAndRoomMaskAndDefault))
         {
-            _ = player.thisController.Move(force);
-            HUDManager.Instance.flashFilter = Mathf.Min(1f, HUDManager.Instance.flashFilter + 0.4f);
+            GameObject gameObject = Instantiate(SnowPlaygrounds.snowmanObj, hit.point, Quaternion.Euler(0f, player.transform.rotation.eulerAngles.y, player.transform.rotation.eulerAngles.z), RoundManager.Instance.mapPropsContainer.transform);
+            gameObject.transform.localScale = nbSnowBall >= ConfigManager.amountSnowBallToBuild.Value
+                ? Constants.SNOWMAN_SCALE
+                : Constants.SNOWMAN_SCALE / ConfigManager.amountSnowBallToBuild.Value * nbSnowBall;
+            NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
+            networkObject.Spawn(true);
+
+            SpawnSnowmanEveryoneRpc((int)player.playerClientId, networkObject, nbSnowBall);
         }
     }
 
-    [Rpc(SendTo.Server, RequireOwnership = false)]
-    public void ShootGlacialDecoyServerRpc(int playerId)
-    {
-        GameObject gameObject = Instantiate(SnowPlaygrounds.snowballGDObj, transform.position - (transform.forward * 0.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
-        SnowballGD snowballGD = gameObject.GetComponent<SnowballGD>();
-        gameObject.GetComponent<NetworkObject>().Spawn();
-        snowballGD.ShootSnowballEveryoneRpc(playerId);
-    }
-
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void ApplyFrostEveryoneRpc(int playerId, NetworkObjectReference enemyObj)
+    public void SpawnSnowmanEveryoneRpc(int playerId, NetworkObjectReference obj, int nbSnowBall)
     {
-        if (!enemyObj.TryGet(out NetworkObject networkObjectEnemy)) return;
-
-        EnemyAI enemy = networkObjectEnemy.gameObject.GetComponentInChildren<EnemyAI>();
-        LFCStatusEffectRegistry.ApplyStatus(enemy.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 100);
-    }
-
-    [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void ApplyFrostEveryoneRpc(int playerId, int targetId)
-    {
-        PlayerControllerB targetedPlayer = StartOfRound.Instance.allPlayerObjects[targetId].GetComponent<PlayerControllerB>();
-        LFCStatusEffectRegistry.ApplyStatus(targetedPlayer.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST, playerId, 10, 10);
+        if (obj.TryGet(out NetworkObject networkObject))
+        {
+            Snowman snowman = networkObject.gameObject.GetComponentInChildren<Snowman>();
+            snowman.currentStackedSnowBall = nbSnowBall;
+            snowman.RefreshHoverTip();
+            LFCMapObjectsManager.AttachMapObjectForEveryone(StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>(), snowman.gameObject);
+        }
     }
 }

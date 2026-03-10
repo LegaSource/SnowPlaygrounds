@@ -8,7 +8,6 @@ public class ConfigManager
     public static ConfigEntry<bool> anyLevel;
     public static ConfigEntry<string> spawnLevels;
     public static ConfigEntry<string> spawnWeathers;
-    public static ConfigEntry<string> snowShaderExclusions;
     // SNOW PILE
     public static ConfigEntry<int> snowPileAmount;
     public static ConfigEntry<bool> isSnowPileInside;
@@ -18,11 +17,11 @@ public class ConfigManager
     public static ConfigEntry<int> minSnowPileOutside;
     public static ConfigEntry<int> maxSnowPileOutside;
     // SNOWBALL
-    public static ConfigEntry<int> snowballAmount;
-    public static ConfigEntry<float> snowballPushForce;
-    public static ConfigEntry<float> snowballSlowdownDuration;
-    public static ConfigEntry<float> snowballSlowdownFactor;
-    public static ConfigEntry<float> snowballThrowCooldown;
+    public static ConfigEntry<int> snowBallAmount;
+    public static ConfigEntry<float> snowBallPushForce;
+    public static ConfigEntry<float> snowBallSlowdownDuration;
+    public static ConfigEntry<float> snowBallSlowdownFactor;
+    public static ConfigEntry<float> snowBallThrowCooldown;
     // SNOWMAN
     public static ConfigEntry<bool> isSnowmanInside;
     public static ConfigEntry<int> minSnowmanInside;
@@ -30,9 +29,7 @@ public class ConfigManager
     public static ConfigEntry<bool> isSnowmanOutside;
     public static ConfigEntry<int> minSnowmanOutside;
     public static ConfigEntry<int> maxSnowmanOutside;
-    public static ConfigEntry<int> amountSnowballToBuild;
-    public static ConfigEntry<float> snowmanSlowdownDuration;
-    public static ConfigEntry<float> snowmanSlowdownFactor;
+    public static ConfigEntry<int> amountSnowBallToBuild;
     // FAKE SNOWMAN
     public static ConfigEntry<bool> isJumpscareOn;
     public static ConfigEntry<float> jumpscareVolume;
@@ -42,18 +39,19 @@ public class ConfigManager
     public static ConfigEntry<int> frostbiteRarity;
     public static ConfigEntry<bool> frostbiteEating;
     public static ConfigEntry<int> frostbiteDamage;
-    public static ConfigEntry<float> frostbiteMinCooldown;
-    public static ConfigEntry<float> frostbiteMaxCooldown;
-    public static ConfigEntry<float> frostbiteSnowballSpeedInside;
-    public static ConfigEntry<float> frostbiteSnowballSpeedOutside;
-    public static ConfigEntry<int> frostbiteSnowballDamage;
-    public static ConfigEntry<float> frostbiteFreezeDuration;
-    public static ConfigEntry<float> frostbiteHitIncrement;
-    public static ConfigEntry<float> frostbiteHitMax;
+    public static ConfigEntry<bool> frostbiteDefaultHit;
     // SNOWGUN
-    public static ConfigEntry<int> snowgunAmount;
-    // GLACIAL DECOY
+    public static ConfigEntry<int> snowGunAmount;
+    // ADDONS
+    public static ConfigEntry<int> glacialBallCooldown;
     public static ConfigEntry<int> glacialDecoyCooldown;
+    // ICE ZONE
+    public static ConfigEntry<bool> isIceZoneInside;
+    public static ConfigEntry<int> minIceZoneInside;
+    public static ConfigEntry<int> maxIceZoneInside;
+    public static ConfigEntry<bool> isIceZoneOutside;
+    public static ConfigEntry<int> minIceZoneOutside;
+    public static ConfigEntry<int> maxIceZoneOutside;
 
     public static void Load()
     {
@@ -61,7 +59,6 @@ public class ConfigManager
         anyLevel = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Any level", true, "If true, the hazards can spawn on any level");
         spawnLevels = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn levels", "tundralevel,titanlevel,dinelevel,rendlevel", "Name of the levels where the hazards can spawn");
         spawnWeathers = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Spawn weathers", "Blizzard,Snowfall", "Name of the weathers where the hazards can spawn");
-        snowShaderExclusions = SnowPlaygrounds.configFile.Bind(Constants.GLOBAL, "Snow shader exclusions", "Red Locust Bees", "List of creatures that are not affected by the snow shader, but are still slowed down");
         // SNOW PILE
         snowPileAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Amount", 20, $"Amount of snow in a {Constants.SNOW_PILE}");
         isSnowPileInside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Can spawn inside", true, $"Can {Constants.SNOW_PILE} spawn inside");
@@ -71,11 +68,11 @@ public class ConfigManager
         minSnowPileOutside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Min spawn outside", 2, $"Min {Constants.SNOW_PILE} to spawn");
         maxSnowPileOutside = SnowPlaygrounds.configFile.Bind(Constants.SNOW_PILE, "Max spawn outside", 4, $"Max {Constants.SNOW_PILE} to spawn");
         // SNOWBALL
-        snowballAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Amount", 5, $"Amount of {Constants.SNOWBALL} per slot");
-        snowballPushForce = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Push force", 1f, "Push force applied to target player");
-        snowballSlowdownDuration = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Slowdown duration", 1f, "Slowdown duration applied to targeted enemy");
-        snowballSlowdownFactor = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Slowdown factor", 3f, "Slowdown factor applied to targeted enemy");
-        snowballThrowCooldown = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Throw cooldown", 1f, $"{Constants.SNOWBALL} throw cooldown");
+        snowBallAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Amount", 5, $"Amount of {Constants.SNOWBALL} per slot");
+        snowBallPushForce = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Push force", 1f, "Push force applied to target player");
+        snowBallSlowdownDuration = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Slowdown duration", 1f, "Slowdown duration applied to targeted enemy");
+        snowBallSlowdownFactor = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Slowdown factor", 3f, "Slowdown factor applied to targeted enemy");
+        snowBallThrowCooldown = SnowPlaygrounds.configFile.Bind(Constants.SNOWBALL, "Throw cooldown", 1f, $"{Constants.SNOWBALL} throw cooldown");
         // SNOWMAN
         isSnowmanInside = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Can spawn inside", true, $"Can {Constants.SNOWMAN} spawn inside");
         minSnowmanInside = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Min spawn inside", 2, $"Min {Constants.SNOWMAN} to spawn");
@@ -83,9 +80,7 @@ public class ConfigManager
         isSnowmanOutside = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Can spawn outside", true, $"Can {Constants.SNOWMAN} spawn outside");
         minSnowmanOutside = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Min spawn outside", 2, $"Min {Constants.SNOWMAN} to spawn");
         maxSnowmanOutside = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Max spawn outside", 3, $"Max {Constants.SNOWMAN} to spawn");
-        amountSnowballToBuild = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Amount snowball", 20, $"Amout of {Constants.SNOWBALL} required to build a {Constants.SNOWMAN}");
-        snowmanSlowdownDuration = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Slowdown duration", 4f, "Slowdown duration applied to targeted enemy");
-        snowmanSlowdownFactor = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Slowdown factor", 3f, "Slowdown factor applied to targeted enemy");
+        amountSnowBallToBuild = SnowPlaygrounds.configFile.Bind(Constants.SNOWMAN, "Amount snowball", 20, $"Amout of {Constants.SNOWBALL} required to build a {Constants.SNOWMAN}");
         // FAKE SNOWMAN
         isJumpscareOn = SnowPlaygrounds.configFile.Bind(Constants.FAKE_SNOWMAN, "Enable jumpscare", true, "Enable jumpscare audio");
         jumpscareVolume = SnowPlaygrounds.configFile.Bind(Constants.FAKE_SNOWMAN, "Jumpscare volume", 0.5f, "Jumpscare audio volume");
@@ -95,17 +90,18 @@ public class ConfigManager
         frostbiteRarity = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Rarity", 10, $"{Constants.FROSTBITE} rarity");
         frostbiteEating = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Eat the player?", true, $"Does {Constants.FROSTBITE} eat the player on collision?");
         frostbiteDamage = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Damage", 20, $"{Constants.FROSTBITE} damages on collision, does not apply if 'Eat the player?' is true");
-        frostbiteMinCooldown = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Min cooldown", 1f, $"Minimum cooldown between {Constants.SNOWBALL} throws");
-        frostbiteMaxCooldown = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Max cooldown", 1.75f, $"Maximum cooldown between {Constants.SNOWBALL} throws");
-        frostbiteSnowballSpeedInside = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball speed inside", 30f, $"{Constants.SNOWBALL} speed when {Constants.FROSTBITE} is inside the dungeon");
-        frostbiteSnowballSpeedOutside = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball speed outside", 45f, $"{Constants.SNOWBALL} speed when {Constants.FROSTBITE} is outside the dungeon");
-        frostbiteSnowballDamage = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Snowball damage", 5, $"{Constants.SNOWBALL} damage");
-        frostbiteFreezeDuration = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Freeze duration", 2f, $"Freeze duration when a player is hit by a {Constants.SNOWBALL}");
-        frostbiteHitIncrement = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Hit increment", 0.1f, $"Hit increment - this value starts at 1 and is used as a multiplier for the enemy's speed and the damage inflicted by his {Constants.SNOWBALL}");
-        frostbiteHitMax = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Hit max value", 2f, $"Max hit value before the {Constants.FROSTBITE} dies, this value is reached through the increments of the previous values");
+        frostbiteDefaultHit = SnowPlaygrounds.configFile.Bind(Constants.FROSTBITE, "Default hit", false, $"Allow hitting {Constants.FROSTBITE} with conventional means");
         // SNOWGUN
-        snowgunAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWGUN, "Amount", 20, $"Amount of snow in a {Constants.SNOWGUN}");
-        // GLACIAL DECOY
-        glacialDecoyCooldown = SnowPlaygrounds.configFile.Bind(Constants.GLACIAL_DECOY, "Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_DECOY}");
+        snowGunAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWGUN, "Amount", 20, $"Amount of snow in a {Constants.SNOWGUN}");
+        // ADDONS
+        glacialBallCooldown = SnowPlaygrounds.configFile.Bind(Constants.ADDONS, $"{Constants.GLACIAL_BALL} Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_BALL}");
+        glacialDecoyCooldown = SnowPlaygrounds.configFile.Bind(Constants.ADDONS, $"{Constants.GLACIAL_DECOY} Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_DECOY}");
+        // ICE ZONE
+        isIceZoneInside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Can spawn inside", true, $"Can {Constants.ICE_ZONE} spawn inside");
+        minIceZoneInside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Min spawn inside", 2, $"Min {Constants.ICE_ZONE} to spawn");
+        maxIceZoneInside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Max spawn inside", 3, $"Max {Constants.ICE_ZONE} to spawn");
+        isIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Can spawn outside", true, $"Can {Constants.ICE_ZONE} spawn outside");
+        minIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Min spawn outside", 2, $"Min {Constants.ICE_ZONE} to spawn");
+        maxIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Max spawn outside", 3, $"Max {Constants.ICE_ZONE} to spawn");
     }
 }

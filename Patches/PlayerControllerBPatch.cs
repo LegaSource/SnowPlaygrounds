@@ -1,5 +1,8 @@
 ﻿using GameNetcodeStuff;
 using HarmonyLib;
+using LegaFusionCore.Managers.NetworkManagers;
+using LegaFusionCore.Registries;
+using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
@@ -17,54 +20,46 @@ internal class PlayerControllerBPatch
     [HarmonyPrefix]
     private static bool HandleSnowmanCamera(ref PlayerControllerB __instance)
     {
-        if (__instance != GameNetworkManager.Instance.localPlayerController) return true;
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance)
+            && !__instance.quickMenuManager.isMenuOpen
+            && __instance.gameObject.TryGetComponentInChildren(out Snowman snowman))
+        {
+            Vector2 lookInput = __instance.playerActions.Movement.Look.ReadValue<Vector2>() * IngamePlayerSettings.Instance.settings.lookSensitivity * 0.008f;
+            snowman.cameraPivot.Rotate(new Vector3(0f, lookInput.x, 0f));
 
-        Snowman snowman = __instance.GetComponentInChildren<Snowman>();
-        if (snowman == null) return true;
+            // Rotation verticale avec clamping
+            float verticalAngle = snowman.cameraPivot.localEulerAngles.x - lookInput.y;
+            verticalAngle = (verticalAngle > 180f) ? (verticalAngle - 360f) : verticalAngle;
+            verticalAngle = Mathf.Clamp(verticalAngle, -45f, 45f);
+            snowman.cameraPivot.localEulerAngles = new Vector3(verticalAngle, snowman.cameraPivot.localEulerAngles.y, 0f);
 
-        if (__instance.quickMenuManager.isMenuOpen) return true;
-
-        Vector2 lookInput = __instance.playerActions.Movement.Look.ReadValue<Vector2>() * IngamePlayerSettings.Instance.settings.lookSensitivity * 0.008f;
-        snowman.cameraPivot.Rotate(new Vector3(0f, lookInput.x, 0f));
-
-        // Rotation verticale avec clamping
-        float verticalAngle = snowman.cameraPivot.localEulerAngles.x - lookInput.y;
-        verticalAngle = (verticalAngle > 180f) ? (verticalAngle - 360f) : verticalAngle;
-        verticalAngle = Mathf.Clamp(verticalAngle, -45f, 45f);
-        snowman.cameraPivot.localEulerAngles = new Vector3(verticalAngle, snowman.cameraPivot.localEulerAngles.y, 0f);
-
-        return false;
+            return false;
+        }
+        return true;
     }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ItemSecondaryUse_performed))]
     [HarmonyPostfix]
     private static void SecondaryUsePerformed(ref PlayerControllerB __instance)
     {
-        if (__instance != GameNetworkManager.Instance.localPlayerController) return;
-
-        Snowman snowman = __instance.GetComponentInChildren<Snowman>();
-        if (snowman?.hidingPlayer == null || snowman.hidingPlayer != __instance) return;
-
-        snowman.ExitSnowman();
+        if (!LFCUtilities.ShouldBeLocalPlayer(__instance)) return;
+        if (__instance.gameObject.TryGetComponentInChildren(out Snowman snowman) && LFCUtilities.ShouldBeLocalPlayer(snowman?.hidingPlayer))
+            snowman.ExitSnowman();
     }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DiscardHeldObject))]
     [HarmonyPrefix]
-    private static bool PreDropObject(ref PlayerControllerB __instance)
+    private static bool DiscardHeldObject(ref PlayerControllerB __instance)
     {
-        if (__instance.currentlyHeldObjectServer is SnowballPlayer snowball && !snowball.isThrown)
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance) && __instance.currentlyHeldObjectServer is SnowBallItem snowBallItem && snowBallItem.currentStackedItems >= 1)
         {
             if (StartOfRound.Instance.shipHasLanded && __instance.isCrouching)
             {
-                SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanFromSnowballServerRpc(
-                    (int)__instance.playerClientId,
-                    snowball.GetComponent<NetworkObject>(),
-                    __instance.gameplayCamera.transform.position + __instance.gameplayCamera.transform.forward,
-                    __instance.transform.rotation);
+                SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc((int)__instance.playerClientId, snowBallItem.currentStackedItems);
+                LFCNetworkManager.Instance.DestroyObjectEveryoneRpc(snowBallItem.GetComponent<NetworkObject>());
                 return false;
             }
-
-            snowball.DropSnowballServerRpc((int)__instance.playerClientId);
+            snowBallItem.ThrowSnowBallServerRpc(direction: Vector3.down, speed: 1f, angleDeg: 0f);
             return false;
         }
         return true;
@@ -72,21 +67,20 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DropAllHeldItems))]
     [HarmonyPrefix]
-    private static void PreDropAllObjects(ref PlayerControllerB __instance)
+    private static void DropAllHeldItems(ref PlayerControllerB __instance)
     {
-        bool isSnowballThrown = false;
-
-        for (int i = 0; i < __instance.ItemSlots.Length; i++)
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance))
         {
-            GrabbableObject grabbableObject = __instance.ItemSlots[i];
-            if (grabbableObject == null || grabbableObject is not SnowballPlayer || !grabbableObject.IsSpawned) continue;
-
-            __instance.DestroyItemInSlot(i);
-            isSnowballThrown = true;
+            for (int i = 0; i < __instance.ItemSlots.Length; i++)
+            {
+                GrabbableObject grabbableObject = __instance.ItemSlots[i];
+                if (grabbableObject != null && grabbableObject is SnowBallItem snowBallItem && grabbableObject.IsSpawned)
+                {
+                    snowBallItem.ThrowSnowBallServerRpc(direction: Vector3.down, speed: 1f, angleDeg: 0f);
+                    __instance.DestroyItemInSlot(i);
+                }
+            }
         }
-
-        if (isSnowballThrown && Physics.Raycast(__instance.transform.position + Vector3.up, Vector3.down, out RaycastHit hitDown, 2f, 605030721, QueryTriggerInteraction.Collide))
-            SPUtilities.ApplyDecal(hitDown.point, hitDown.normal);
     }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SetHoverTipAndCurrentInteractTrigger))]
@@ -96,13 +90,12 @@ internal class PlayerControllerBPatch
         if (__instance.isGrabbingObjectAnimation || __instance.inSpecialMenu || __instance.quickMenuManager.isMenuOpen) return true;
 
         __instance.interactRay = new Ray(__instance.gameplayCamera.transform.position, __instance.gameplayCamera.transform.forward);
-        if (Physics.Raycast(__instance.interactRay, out __instance.hit, __instance.grabDistance, __instance.interactableObjectsMask) && __instance.hit.collider.gameObject.layer != 8 && __instance.hit.collider.gameObject.layer != 30)
+        if (Physics.Raycast(__instance.interactRay, out __instance.hit, __instance.grabDistance, __instance.interactableObjectsMask)
+            && __instance.hit.collider.gameObject.layer != 8
+            && __instance.hit.collider.gameObject.layer != 30
+            && __instance.hit.collider.tag.Equals("InteractTrigger")
+            && __instance.hit.collider.gameObject.TryGetComponentInParent(out Snowman snowman))
         {
-            if (!__instance.hit.collider.tag.Equals("InteractTrigger")) return true;
-
-            Snowman snowman = __instance.hit.collider.gameObject.GetComponentInParent<Snowman>();
-            if (snowman == null) return true;
-
             __instance.hoveringOverTrigger = snowman.snowmanTrigger;
             if (!__instance.isHoldingInteract)
             {
@@ -131,5 +124,21 @@ internal class PlayerControllerBPatch
             return;
         }
         player.cursorTip.text = player.cursorTip.text.Replace("[LMB]", "[E]");
+    }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
+    [HarmonyPostfix]
+    private static void TeleportPlayer(PlayerControllerB __instance)
+    {
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance))
+            LFCStatRegistry.ClearModifiersWithTagPrefix(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone");
+    }
+
+    [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
+    [HarmonyPostfix]
+    private static void KillPlayer(PlayerControllerB __instance)
+    {
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance))
+            LFCStatRegistry.ClearModifiersWithTagPrefix(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone");
     }
 }

@@ -1,4 +1,6 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Managers.NetworkManagers;
+using LegaFusionCore.Registries;
 using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.Items;
@@ -15,7 +17,7 @@ public class Snowman : NetworkBehaviour, IHittable
     public Transform cameraPivot;
     private Camera playerCamera;
 
-    public int currentStackedSnowball = 0;
+    public int currentStackedSnowBall = 0;
 
     public bool isPlayerHiding = false;
     public PlayerControllerB hidingPlayer;
@@ -24,7 +26,8 @@ public class Snowman : NetworkBehaviour, IHittable
 
     private void Start()
     {
-        if (currentStackedSnowball == 0) currentStackedSnowball = ConfigManager.amountSnowballToBuild.Value;
+        if (currentStackedSnowBall == 0)
+            currentStackedSnowBall = ConfigManager.amountSnowBallToBuild.Value;
         playerCamera = GameNetworkManager.Instance.localPlayerController.gameplayCamera;
     }
 
@@ -36,7 +39,7 @@ public class Snowman : NetworkBehaviour, IHittable
         foreach (Collider hitCollider in hitColliders)
         {
             PlayerControllerB player = hitCollider.GetComponent<PlayerControllerB>();
-            if (player != null && player == GameNetworkManager.Instance.localPlayerController)
+            if (LFCUtilities.ShouldBeLocalPlayer(player))
             {
                 SpawnFrostbiteServerRpc();
                 break;
@@ -57,52 +60,48 @@ public class Snowman : NetworkBehaviour, IHittable
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
     public void SpawnFrostbiteEveryoneRpc()
     {
-        if (ConfigManager.isJumpscareOn.Value) SPUtilities.PlayAudio(SnowPlaygrounds.jumpscareAudio, transform.position, ConfigManager.jumpscareVolume.Value);
-        if (LFCUtilities.IsServer) Destroy(gameObject);
+        if (ConfigManager.isJumpscareOn.Value)
+            SPUtilities.PlayAudio(SnowPlaygrounds.jumpscareAudio, transform.position, ConfigManager.jumpscareVolume.Value);
+        if (LFCUtilities.IsServer)
+            Destroy(gameObject);
     }
 
     public void SnowmanInteraction()
     {
-        if (currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value) BuildSnowman();
-        else if (hidingPlayer == null) EnterSnowmanEveryoneRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
+        if (currentStackedSnowBall < ConfigManager.amountSnowBallToBuild.Value)
+            BuildSnowman();
+        else if (hidingPlayer == null)
+            EnterSnowmanEveryoneRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
     }
 
     public void BuildSnowman()
     {
         PlayerControllerB player = GameNetworkManager.Instance.localPlayerController;
-        int nbSnowball = 0;
-
-        for (int i = 0; i < player.ItemSlots.Length; i++)
+        if (LFCUtilities.ShouldBeLocalPlayer(player))
         {
-            GrabbableObject grabbableObject = player.ItemSlots[i];
-            if (grabbableObject == null) continue;
+            int nbSnowBall = 0;
 
-            if (grabbableObject is SnowballPlayer snowball)
+            for (int i = 0; i < player.ItemSlots.Length; i++)
             {
-                nbSnowball += snowball.currentStackedItems;
-                player.DestroyItemInSlotAndSync(i);
+                GrabbableObject grabbableObject = player.ItemSlots[i];
+                if (grabbableObject != null && grabbableObject is SnowBallItem snowBallItem)
+                {
+                    nbSnowBall += snowBallItem.currentStackedItems;
+                    player.DestroyItemInSlotAndSync(i);
+                }
             }
-        }
 
-        if (nbSnowball > 0) BuildSnowmanEveryoneRpc(nbSnowball);
+            if (nbSnowBall > 0) BuildSnowmanEveryoneRpc(nbSnowBall);
+        }
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void BuildSnowmanEveryoneRpc(int nbSnowball)
+    public void BuildSnowmanEveryoneRpc(int nbSnowBall)
     {
-        currentStackedSnowball += nbSnowball;
-        if (currentStackedSnowball >= ConfigManager.amountSnowballToBuild.Value)
-        {
-            gameObject.transform.localScale = Constants.SNOWMAN_SCALE;
-
-            PlayerControllerB player = GameNetworkManager.Instance.localPlayerController;
-            if (player.IsServer || player.IsHost) SnowPlaygrounds.snowmen.Add(this);
-        }
-        else
-        {
-            gameObject.transform.localScale = Constants.SNOWMAN_SCALE / ConfigManager.amountSnowballToBuild.Value * currentStackedSnowball;
-        }
-
+        currentStackedSnowBall += nbSnowBall;
+        gameObject.transform.localScale = currentStackedSnowBall >= ConfigManager.amountSnowBallToBuild.Value
+            ? Constants.SNOWMAN_SCALE
+            : Constants.SNOWMAN_SCALE / ConfigManager.amountSnowBallToBuild.Value * currentStackedSnowBall;
         RefreshHoverTip();
     }
 
@@ -121,18 +120,16 @@ public class Snowman : NetworkBehaviour, IHittable
         transform.position = player.transform.position;
         transform.rotation = player.transform.rotation;
 
-        if (player == GameNetworkManager.Instance.localPlayerController)
+        if (LFCUtilities.ShouldBeLocalPlayer(player))
         {
             camera.enabled = true;
             player.gameplayCamera = camera;
 
-            HUDManager.Instance.ChangeControlTip(0, "Exit Snowman : [Q]", clearAllOther: true);
-
             SPUtilities.SetTargetable(player, false);
-
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Disable();
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Disable();
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch", false).Disable();
+            HUDManager.Instance.ChangeControlTip(0, "Exit Snowman : [Q]", clearAllOther: true);
+            LFCPlayerActionRegistry.AddLock("Move", $"{SnowPlaygrounds.modName}{gameObject.name}");
+            LFCPlayerActionRegistry.AddLock("Jump", $"{SnowPlaygrounds.modName}{gameObject.name}");
+            LFCPlayerActionRegistry.AddLock("Crouch", $"{SnowPlaygrounds.modName}{gameObject.name}");
         }
     }
 
@@ -145,18 +142,16 @@ public class Snowman : NetworkBehaviour, IHittable
 
         transform.SetParent(null);
 
-        if (player == GameNetworkManager.Instance.localPlayerController)
+        if (LFCUtilities.ShouldBeLocalPlayer(player))
         {
             camera.enabled = false;
             player.gameplayCamera = playerCamera;
 
             HUDManager.Instance.ClearControlTips();
-
-            SPUtilities.SetTargetable(player, true, ConfigManager.snowmanSlowdownDuration.Value);
-
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Move", false).Enable();
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Jump", false).Enable();
-            IngamePlayerSettings.Instance.playerInput.actions.FindAction("Crouch", false).Enable();
+            LFCPlayerActionRegistry.RemoveLock("Move", $"{SnowPlaygrounds.modName}{gameObject.name}");
+            LFCPlayerActionRegistry.RemoveLock("Jump", $"{SnowPlaygrounds.modName}{gameObject.name}");
+            LFCPlayerActionRegistry.RemoveLock("Crouch", $"{SnowPlaygrounds.modName}{gameObject.name}");
+            SPUtilities.SetTargetable(player, true);
         }
         if (LFCUtilities.IsServer) Destroy(gameObject);
     }
@@ -169,33 +164,36 @@ public class Snowman : NetworkBehaviour, IHittable
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other == null || !isPlayerHiding) return;
-
-        EnemyAICollisionDetect collisionDetect = other.GetComponent<EnemyAICollisionDetect>();
-        if (collisionDetect != null) FreezeEnemyEveryoneRpc(collisionDetect.mainScript.NetworkObject);
+        if (other != null && isPlayerHiding)
+        {
+            if (other.TryGetComponent(out EnemyAICollisionDetect collisionDetect))
+                OnTriggerEnterEveryoneRpc(collisionDetect.mainScript.NetworkObject);
+        }
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void FreezeEnemyEveryoneRpc(NetworkObjectReference enemyObject)
+    public void OnTriggerEnterEveryoneRpc(NetworkObjectReference enemyObject)
     {
-        if (!enemyObject.TryGet(out NetworkObject networkObject)) return;
-
-        EnemyAI enemy = networkObject.gameObject.GetComponentInChildren<EnemyAI>();
-        if (enemy == null) return;
-
-        if (hidingPlayer != null && hidingPlayer == GameNetworkManager.Instance.localPlayerController) ExitSnowman();
-        if (enemy is FrostbiteAI frostbite) frostbite.HitFrostbite();
-        else SPUtilities.FreezeEnemy(enemy, ConfigManager.snowmanSlowdownDuration.Value, ConfigManager.snowmanSlowdownFactor.Value);
+        if (enemyObject.TryGet(out NetworkObject networkObject) && networkObject.gameObject.TryGetComponentInChildren(out EnemyAI enemy))
+        {
+            if (LFCUtilities.ShouldBeLocalPlayer(hidingPlayer))
+                ExitSnowman();
+            if (enemy is FrostbiteAI frostbite)
+                frostbite.HitFrostbiteForEveryone();
+            else
+                LFCNetworkManager.Instance.ApplyStatusEveryoneRpc((int)hidingPlayer.playerClientId, enemy.NetworkObject, (int)LFCStatusEffectRegistry.StatusEffectType.FROST, 10, 100);
+        }
     }
 
     public void RefreshHoverTip()
-        => snowmanTrigger.hoverTip = currentStackedSnowball < ConfigManager.amountSnowballToBuild.Value
-            ? $"Add snowball {currentStackedSnowball}/{ConfigManager.amountSnowballToBuild.Value} : [LMB]"
+        => snowmanTrigger.hoverTip = currentStackedSnowBall < ConfigManager.amountSnowBallToBuild.Value
+            ? $"Add snowball {currentStackedSnowBall}/{ConfigManager.amountSnowBallToBuild.Value} : [LMB]"
             : "Enter : [LMB]";
 
     public bool Hit(int force, Vector3 hitDirection, PlayerControllerB playerWhoHit = null, bool playHitSFX = false, int hitID = -1)
     {
-        if (currentStackedSnowball >= ConfigManager.amountSnowballToBuild.Value) SpawnSnowPileServerRpc();
+        if (currentStackedSnowBall >= ConfigManager.amountSnowBallToBuild.Value)
+            SpawnSnowPileServerRpc();
         return true;
     }
 

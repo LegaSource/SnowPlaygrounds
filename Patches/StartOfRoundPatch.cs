@@ -1,5 +1,8 @@
 ﻿using HarmonyLib;
+using LegaFusionCore.Utilities;
+using SnowPlaygrounds.Behaviours.MapObjects;
 using SnowPlaygrounds.Managers;
+using System.Linq;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -24,16 +27,42 @@ internal class StartOfRoundPatch
     [HarmonyPostfix]
     public static void StartOfGame()
     {
-        SnowPlaygrounds.snowmen.Clear();
-        SPUtilities.ClearSnowballDecals();
+        ClearSnowmen();
+        ClearSnowDecals();
     }
 
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.EndOfGame))]
     [HarmonyPostfix]
-    public static void EndOfGame(ref StartOfRound __instance)
+    public static void EndOfGame()
     {
-        SPUtilities.DespawnSnowmanEndGame(__instance);
-        SPUtilities.ClearSnowballDecals();
+        ClearSnowmen();
+        ClearSnowDecals();
+    }
+
+    public static void ClearSnowmen()
+    {
+        if (LFCUtilities.IsServer)
+        {
+            foreach (Snowman snowman in Object.FindObjectsOfType<Snowman>())
+            {
+                if (snowman == null) continue;
+                if (snowman.isPlayerHiding)
+                {
+                    snowman.ExitSnowmanEveryoneRpc((int)snowman.hidingPlayer.playerClientId);
+                    continue;
+                }
+
+                NetworkObject networkObject = snowman.GetComponent<NetworkObject>();
+                if (networkObject != null && networkObject.IsSpawned)
+                    networkObject.Despawn();
+            }
+        }
+    }
+
+    public static void ClearSnowDecals()
+    {
+        SnowPlaygrounds.snowDecals.ToList().ForEach(Object.Destroy);
+        SnowPlaygrounds.snowDecals.Clear();
     }
 
     [HarmonyPatch(typeof(StartOfRound), nameof(StartOfRound.OnDisable))]

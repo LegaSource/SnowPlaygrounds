@@ -1,10 +1,11 @@
 ﻿using GameNetcodeStuff;
 using LegaFusionCore.Behaviours.Addons;
 using SnowPlaygrounds.Managers;
+using UnityEngine;
 
 namespace SnowPlaygrounds.Behaviours.Items;
 
-public class GlacialDecoy : AddonComponent
+public class GlacialBall : AddonComponent
 {
     public override void ActivateAddonAbility()
     {
@@ -13,8 +14,9 @@ public class GlacialDecoy : AddonComponent
         PlayerControllerB player = GetComponentInParent<GrabbableObject>()?.playerHeldBy;
         if (player != null)
         {
-            StartCooldown(ConfigManager.glacialDecoyCooldown.Value);
-            SnowPlaygroundsNetworkManager.Instance.SpawnSnowmanServerRpc((int)player.playerClientId, ConfigManager.amountSnowBallToBuild.Value);
+            Vector3 position = player.localVisor.transform.position + player.gameplayCamera.transform.forward;
+            StartCooldown(ConfigManager.glacialBallCooldown.Value);
+            SnowPlaygroundsNetworkManager.Instance.ThrowFrostBallServerRpc((int)player.playerClientId, position, player.gameplayCamera.transform.forward);
         }
     }
 }

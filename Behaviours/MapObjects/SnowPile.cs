@@ -1,8 +1,8 @@
 ﻿using GameNetcodeStuff;
+using LegaFusionCore.Managers.NetworkManagers;
 using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
-using System;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -20,14 +20,14 @@ public class SnowPile : NetworkBehaviour
         initialScale = transform.localScale;
     }
 
-    public void GrabSnowballs()
+    public void GrabSnowBalls()
     {
-        GrabbableObject grabbableObject = GameNetworkManager.Instance.localPlayerController.currentlyHeldObjectServer;
-        if (grabbableObject != null && grabbableObject is Snowgun snowgun && snowgun.currentStackedItems < ConfigManager.snowgunAmount.Value)
+        GrabbableObject grabbableObject = GameNetworkManager.Instance.localPlayerController?.currentlyHeldObjectServer;
+        if (grabbableObject != null && grabbableObject is SnowGun snowGun && snowGun.currentStackedItems < ConfigManager.snowGunAmount.Value)
         {
-            int nbSnowball = ConfigManager.snowgunAmount.Value - snowgun.currentStackedItems;
-            RemoveSnowballEveryoneRpc(nbSnowball);
-            snowgun.UpdateStackedItemsEveryoneRpc(nbSnowball);
+            int nbSnowBall = ConfigManager.snowGunAmount.Value - snowGun.currentStackedItems;
+            RemoveSnowBallEveryoneRpc(nbSnowBall);
+            snowGun.UpdateStackedItemsEveryoneRpc(nbSnowBall);
             return;
         }
         ForceGrabObjectServerRpc((int)GameNetworkManager.Instance.localPlayerController.playerClientId);
@@ -36,70 +36,25 @@ public class SnowPile : NetworkBehaviour
     [Rpc(SendTo.Server, RequireOwnership = false)]
     public void ForceGrabObjectServerRpc(int playerId)
     {
-        try
-        {
-            PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-            GameObject gameObject = Instantiate(SnowPlaygrounds.snowballPlayerObj, player.transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer);
-            GrabbableObject grabbableObject = gameObject.GetComponent<GrabbableObject>();
-            grabbableObject.fallTime = 0f;
-            NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
-            networkObject.Spawn();
-
-            ForceGrabObjectEveryoneRpc(networkObject, playerId);
-        }
-        catch (Exception arg)
-        {
-            SnowPlaygrounds.mls.LogError($"Error in ForceGrabObjectServerRpc: {arg}");
-        }
-    }
-
-    [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void ForceGrabObjectEveryoneRpc(NetworkObjectReference obj, int playerId)
-    {
-        if (!obj.TryGet(out NetworkObject networkObject)) return;
-
-        SnowballPlayer snowball = networkObject.gameObject.GetComponentInChildren<GrabbableObject>() as SnowballPlayer;
         PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
-        if (player == GameNetworkManager.Instance.localPlayerController) GrabObject(snowball, player);
-    }
+        GameObject gameObject = Instantiate(SnowPlaygrounds.snowBallItemObj, player.transform.position, Quaternion.identity, StartOfRound.Instance.propsContainer);
 
-    public void GrabObject(SnowballPlayer snowball, PlayerControllerB player)
-    {
-        snowball.originalScale = snowball.transform.lossyScale;
+        SnowBallItem snowBallItem = gameObject.GetComponent<SnowBallItem>();
+        snowBallItem.fallTime = 0f;
+        NetworkObject networkObject = gameObject.GetComponent<NetworkObject>();
+        networkObject.Spawn();
 
-        player.currentlyGrabbingObject = snowball;
-        player.grabInvalidated = false;
-
-        player.currentlyGrabbingObject.InteractItem();
-
-        if (player.currentlyGrabbingObject.grabbable && player.FirstEmptyItemSlot() != -1)
-        {
-            player.playerBodyAnimator.SetBool("GrabInvalidated", value: false);
-            player.playerBodyAnimator.SetBool("GrabValidated", value: false);
-            player.playerBodyAnimator.SetBool("cancelHolding", value: false);
-            player.playerBodyAnimator.ResetTrigger("Throw");
-            player.SetSpecialGrabAnimationBool(setTrue: true);
-            player.isGrabbingObjectAnimation = true;
-
-            player.carryWeight = Mathf.Clamp(player.carryWeight + (player.currentlyGrabbingObject.itemProperties.weight - 1f), 1f, 10f);
-            player.grabObjectAnimationTime = player.currentlyGrabbingObject.itemProperties.grabAnimationTime > 0f
-                ? player.currentlyGrabbingObject.itemProperties.grabAnimationTime
-                : 0.4f;
-
-            if (!player.isTestingPlayer) player.GrabObjectServerRpc(player.currentlyGrabbingObject.NetworkObject);
-            if (player.grabObjectCoroutine != null) player.StopCoroutine(player.grabObjectCoroutine);
-            player.grabObjectCoroutine = player.StartCoroutine(player.GrabObject());
-            snowball.InitializeEveryoneRpc(Mathf.Min(ConfigManager.snowballAmount.Value, currentStackedItems));
-            RemoveSnowballEveryoneRpc(ConfigManager.snowballAmount.Value);
-        }
+        LFCNetworkManager.Instance.ForceGrabObjectEveryoneRpc(networkObject, (int)player.playerClientId);
+        snowBallItem.InitializeEveryoneRpc(Mathf.Min(ConfigManager.snowBallAmount.Value, currentStackedItems));
+        RemoveSnowBallEveryoneRpc(ConfigManager.snowBallAmount.Value);
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void RemoveSnowballEveryoneRpc(int nbSnowball)
+    public void RemoveSnowBallEveryoneRpc(int nbSnowBall)
     {
-        float factor = 0.05f * nbSnowball;
+        float factor = 0.05f * nbSnowBall;
         transform.localScale -= initialScale * Mathf.Max(factor, 0f);
-        currentStackedItems -= nbSnowball;
+        currentStackedItems -= nbSnowBall;
 
         if (currentStackedItems <= 0 && LFCUtilities.IsServer)
             Destroy(gameObject);

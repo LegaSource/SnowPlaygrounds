@@ -1,64 +1,76 @@
 ﻿using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Managers;
 using System;
+using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
 
 namespace SnowPlaygrounds.Behaviours.Items;
 
-public class Snowgun : PhysicsProp
+public class SnowGun : PhysicsProp
 {
     public int currentStackedItems;
-    public float lastShootTimer = 0f;
-    public static float shootCooldown = 1.5f;
+    public Transform ShootPoint;
+    public Coroutine shootCooldownCoroutine;
 
     public void InitializeForServer()
     {
         int value = UnityEngine.Random.Range(20, 50);
-        InitializeEveryoneRpc(value);
+        string[] addons = [Constants.GLACIAL_DECOY, Constants.GLACIAL_BALL];
+        InitializeEveryoneRpc(value, addons[UnityEngine.Random.Range(0, addons.Length)]);
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void InitializeEveryoneRpc(int value)
+    public void InitializeEveryoneRpc(int value, string addonName)
     {
         SetScrapValue(value);
-        LFCUtilities.SetAddonComponent<GlacialDecoy>(this, Constants.GLACIAL_DECOY);
-        currentStackedItems = ConfigManager.snowgunAmount.Value;
-    }
-
-    public override void Update()
-    {
-        base.Update();
-        lastShootTimer += Time.deltaTime;
+        if (addonName.Equals(Constants.GLACIAL_DECOY))
+            LFCUtilities.SetAddonComponent<GlacialDecoy>(this, addonName);
+        else
+            LFCUtilities.SetAddonComponent<GlacialBall>(this, addonName);
+        currentStackedItems = ConfigManager.snowGunAmount.Value;
     }
 
     public override void ItemActivate(bool used, bool buttonDown = true)
     {
         base.ItemActivate(used, buttonDown);
 
-        if (!buttonDown || playerHeldBy == null) return;
-        if (currentStackedItems > 0) ShootGunServerRpc();
+        if (buttonDown && playerHeldBy != null && currentStackedItems > 0)
+            shootCooldownCoroutine ??= StartCoroutine(ShootCooldownCoroutine());
+    }
+
+    private IEnumerator ShootCooldownCoroutine()
+    {
+        ShootGunServerRpc(direction: playerHeldBy.gameplayCamera.transform.forward);
+        yield return new WaitForSeconds(1.5f);
+        shootCooldownCoroutine = null;
     }
 
     [Rpc(SendTo.Server, RequireOwnership = false)]
-    public void ShootGunServerRpc()
+    public void ShootGunServerRpc(Vector3 direction)
     {
-        if (lastShootTimer < shootCooldown) return;
-
-        GameObject gameObject = Instantiate(SnowPlaygrounds.snowballGunObj, transform.position - (transform.forward * 0.5f), Quaternion.identity, StartOfRound.Instance.propsContainer);
-        SnowballGun snowballGun = gameObject.GetComponent<SnowballGun>();
+        GameObject gameObject = Instantiate(SnowPlaygrounds.snowBallProjectileObj, ShootPoint.transform.position, Quaternion.identity);
         gameObject.GetComponent<NetworkObject>().Spawn();
-        snowballGun.ShootSnowballEveryoneRpc((int)playerHeldBy.playerClientId);
-        UpdateStackedItemsEveryoneRpc(-1);
+        PlayThrowEveryoneRpc();
 
-        lastShootTimer = 0f;
+        SnowBallProjectile snowBallProjectile = gameObject.GetComponent<SnowBallProjectile>();
+        snowBallProjectile.ThrowFromPositionEveryoneRpc(playerId: (int)playerHeldBy.playerClientId,
+            startPosition: ShootPoint.transform.position,
+            direction: direction,
+            speed: 60f,
+            angleDeg: 3f);
+        UpdateStackedItemsEveryoneRpc(-1);
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void UpdateStackedItemsEveryoneRpc(int nbSnowball)
+    public void PlayThrowEveryoneRpc() => SPUtilities.PlayAudio(SnowPlaygrounds.snowShootAudio, transform.position);
+
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void UpdateStackedItemsEveryoneRpc(int nbSnowBall)
     {
-        currentStackedItems += nbSnowball;
-        if (isHeld && !isPocketed && playerHeldBy != null && playerHeldBy == GameNetworkManager.Instance.localPlayerController) SetControlTipsForItem();
+        currentStackedItems += nbSnowBall;
+        if (isHeld && !isPocketed && LFCUtilities.ShouldBeLocalPlayer(playerHeldBy))
+            SetControlTipsForItem();
     }
 
     public override void SetControlTipsForItem()
