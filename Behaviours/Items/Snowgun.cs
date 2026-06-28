@@ -16,18 +16,13 @@ public class SnowGun : PhysicsProp
     public void InitializeForServer()
     {
         int value = UnityEngine.Random.Range(20, 50);
-        string[] addons = [Constants.GLACIAL_DECOY, Constants.GLACIAL_BALL];
-        InitializeEveryoneRpc(value, addons[UnityEngine.Random.Range(0, addons.Length)]);
+        InitializeEveryoneRpc(value);
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
-    public void InitializeEveryoneRpc(int value, string addonName)
+    public void InitializeEveryoneRpc(int value)
     {
         SetScrapValue(value);
-        if (addonName.Equals(Constants.GLACIAL_DECOY))
-            LFCUtilities.SetAddonComponent<GlacialDecoy>(this, addonName);
-        else
-            LFCUtilities.SetAddonComponent<GlacialBall>(this, addonName);
         currentStackedItems = ConfigManager.snowGunAmount.Value;
     }
 

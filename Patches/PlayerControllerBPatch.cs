@@ -12,13 +12,13 @@ using UnityEngine;
 
 namespace SnowPlaygrounds.Patches;
 
-internal class PlayerControllerBPatch
+public class PlayerControllerBPatch
 {
     public static bool isTargetable = true;
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.PlayerLookInput))]
     [HarmonyPrefix]
-    private static bool HandleSnowmanCamera(ref PlayerControllerB __instance)
+    public static bool HandleSnowmanCamera(PlayerControllerB __instance)
     {
         if (LFCUtilities.ShouldBeLocalPlayer(__instance)
             && !__instance.quickMenuManager.isMenuOpen
@@ -40,7 +40,7 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.ItemSecondaryUse_performed))]
     [HarmonyPostfix]
-    private static void SecondaryUsePerformed(ref PlayerControllerB __instance)
+    public static void SecondaryUsePerformed(PlayerControllerB __instance)
     {
         if (!LFCUtilities.ShouldBeLocalPlayer(__instance)) return;
         if (__instance.gameObject.TryGetComponentInChildren(out Snowman snowman) && LFCUtilities.ShouldBeLocalPlayer(snowman?.hidingPlayer))
@@ -49,9 +49,9 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DiscardHeldObject))]
     [HarmonyPrefix]
-    private static bool DiscardHeldObject(ref PlayerControllerB __instance)
+    public static bool DiscardHeldObject(PlayerControllerB __instance)
     {
-        if (LFCUtilities.ShouldBeLocalPlayer(__instance) && __instance.currentlyHeldObjectServer is SnowBallItem snowBallItem && snowBallItem.currentStackedItems >= 1)
+        if (LFCUtilities.ShouldBeLocalPlayer(__instance) && __instance.currentlyHeldObjectServer is SnowBallItem snowBallItem && !snowBallItem.deactivated && snowBallItem.currentStackedItems >= 1)
         {
             if (StartOfRound.Instance.shipHasLanded && __instance.isCrouching)
             {
@@ -67,25 +67,22 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.DropAllHeldItems))]
     [HarmonyPrefix]
-    private static void DropAllHeldItems(ref PlayerControllerB __instance)
+    public static void DropAllHeldItems(PlayerControllerB __instance)
     {
         if (LFCUtilities.ShouldBeLocalPlayer(__instance))
         {
             for (int i = 0; i < __instance.ItemSlots.Length; i++)
             {
                 GrabbableObject grabbableObject = __instance.ItemSlots[i];
-                if (grabbableObject != null && grabbableObject is SnowBallItem snowBallItem && grabbableObject.IsSpawned)
-                {
-                    snowBallItem.ThrowSnowBallServerRpc(direction: Vector3.down, speed: 1f, angleDeg: 0f);
+                if (grabbableObject != null && grabbableObject is SnowBallItem snowBallItem && !snowBallItem.deactivated && grabbableObject.IsSpawned)
                     __instance.DestroyItemInSlot(i);
-                }
             }
         }
     }
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.SetHoverTipAndCurrentInteractTrigger))]
     [HarmonyPrefix]
-    private static bool SnowmanInteractTrigger(ref PlayerControllerB __instance)
+    public static bool SnowmanInteractTrigger(ref PlayerControllerB __instance)
     {
         if (__instance.isGrabbingObjectAnimation || __instance.inSpecialMenu || __instance.quickMenuManager.isMenuOpen) return true;
 
@@ -110,7 +107,7 @@ internal class PlayerControllerBPatch
         return true;
     }
 
-    private static void FormatCursorTip(PlayerControllerB player)
+    public static void FormatCursorTip(PlayerControllerB player)
     {
         if (StartOfRound.Instance.localPlayerUsingController)
         {
@@ -128,7 +125,7 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.TeleportPlayer))]
     [HarmonyPostfix]
-    private static void TeleportPlayer(PlayerControllerB __instance)
+    public static void TeleportPlayer(PlayerControllerB __instance)
     {
         if (LFCUtilities.ShouldBeLocalPlayer(__instance))
             LFCStatRegistry.ClearModifiersWithTagPrefix(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone");
@@ -136,7 +133,7 @@ internal class PlayerControllerBPatch
 
     [HarmonyPatch(typeof(PlayerControllerB), nameof(PlayerControllerB.KillPlayer))]
     [HarmonyPostfix]
-    private static void KillPlayer(PlayerControllerB __instance)
+    public static void KillPlayer(PlayerControllerB __instance)
     {
         if (LFCUtilities.ShouldBeLocalPlayer(__instance))
             LFCStatRegistry.ClearModifiersWithTagPrefix(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone");

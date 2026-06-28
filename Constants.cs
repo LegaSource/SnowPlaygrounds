@@ -12,8 +12,7 @@ public class Constants
     public const string SNOWGUN = "Snowgun";
     // Addons
     public const string ADDONS = "Addons";
-    public const string GLACIAL_BALL = "Glacial Ball";
-    public const string GLACIAL_DECOY = "Glacial Decoy";
+    public const string FROST_MARK = "Frost Mark";
     // Map objects
     public const string SNOW_PILE = "Snow Pile";
     public const string SNOWMAN = "Snowman";

@@ -9,11 +9,11 @@ using Unity.Netcode;
 
 namespace SnowPlaygrounds.Patches;
 
-internal class RoundManagerPatch
+public class RoundManagerPatch
 {
     [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnMapObjects))]
     [HarmonyPostfix]
-    private static void SpawnInsideHazards(ref RoundManager __instance)
+    public static void SpawnInsideHazards(RoundManager __instance)
     {
         if (!__instance.IsHost) return;
         LFCUtilities.Shuffle(__instance.insideAINodes);
@@ -21,7 +21,7 @@ internal class RoundManagerPatch
 
     [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.SpawnOutsideHazards))]
     [HarmonyPostfix]
-    private static void SpawnOutsideHazards(ref RoundManager __instance)
+    public static void SpawnOutsideHazards(RoundManager __instance)
     {
         if (!__instance.IsHost) return;
         if (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())) return;
@@ -30,14 +30,14 @@ internal class RoundManagerPatch
         if (ConfigManager.isIceZoneOutside.Value)
             LFCMapObjectsManager.SpawnOutsideMapObjectsForServer(ConfigManager.minIceZoneOutside.Value, ConfigManager.maxIceZoneOutside.Value, SPUtilities.SpawnIceZone);
         if (ConfigManager.isSnowmanOutside.Value)
-            LFCMapObjectsManager.SpawnOutsideMapObjectsForServer(ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowPileOutside.Value, SPUtilities.SpawnSnowman);
+            LFCMapObjectsManager.SpawnOutsideMapObjectsForServer(ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowmanOutside.Value, SPUtilities.SpawnSnowman);
         if (ConfigManager.isSnowPileOutside.Value)
-            LFCMapObjectsManager.SpawnOutsideMapObjectsForServer(ConfigManager.minSnowmanOutside.Value, ConfigManager.maxSnowPileOutside.Value, SPUtilities.SpawnSnowPile);
+            LFCMapObjectsManager.SpawnOutsideMapObjectsForServer(ConfigManager.minSnowPileOutside.Value, ConfigManager.maxSnowPileOutside.Value, SPUtilities.SpawnSnowPile);
     }
 
     [HarmonyPatch(typeof(RoundManager), nameof(RoundManager.GeneratedFloorPostProcessing))]
     [HarmonyPostfix]
-    private static void AddFakeSnowman(ref RoundManager __instance)
+    public static void AddFakeSnowman(RoundManager __instance)
     {
         if (!__instance.IsHost || (!ConfigManager.anyLevel.Value && !ConfigManager.spawnLevels.Value.Contains(__instance.currentLevel.name.ToLowerInvariant()) && !ConfigManager.spawnWeathers.Value.Contains(__instance.currentLevel.currentWeather.ToString())))
             return;

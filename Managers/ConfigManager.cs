@@ -43,8 +43,7 @@ public class ConfigManager
     // SNOWGUN
     public static ConfigEntry<int> snowGunAmount;
     // ADDONS
-    public static ConfigEntry<int> glacialBallCooldown;
-    public static ConfigEntry<int> glacialDecoyCooldown;
+    public static ConfigEntry<int> frostMarkCooldown;
     // ICE ZONE
     public static ConfigEntry<bool> isIceZoneInside;
     public static ConfigEntry<int> minIceZoneInside;
@@ -52,6 +51,8 @@ public class ConfigManager
     public static ConfigEntry<bool> isIceZoneOutside;
     public static ConfigEntry<int> minIceZoneOutside;
     public static ConfigEntry<int> maxIceZoneOutside;
+    public static ConfigEntry<float> iceZonePlayerSpeed;
+    public static ConfigEntry<float> iceZoneEnemySpeed;
 
     public static void Load()
     {
@@ -94,8 +95,7 @@ public class ConfigManager
         // SNOWGUN
         snowGunAmount = SnowPlaygrounds.configFile.Bind(Constants.SNOWGUN, "Amount", 20, $"Amount of snow in a {Constants.SNOWGUN}");
         // ADDONS
-        glacialBallCooldown = SnowPlaygrounds.configFile.Bind(Constants.ADDONS, $"{Constants.GLACIAL_BALL} Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_BALL}");
-        glacialDecoyCooldown = SnowPlaygrounds.configFile.Bind(Constants.ADDONS, $"{Constants.GLACIAL_DECOY} Cooldown", 45, $"Cooldown duration of the {Constants.GLACIAL_DECOY}");
+        frostMarkCooldown = SnowPlaygrounds.configFile.Bind(Constants.ADDONS, $"{Constants.FROST_MARK} Cooldown", 45, $"Cooldown duration of the {Constants.FROST_MARK}");
         // ICE ZONE
         isIceZoneInside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Can spawn inside", true, $"Can {Constants.ICE_ZONE} spawn inside");
         minIceZoneInside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Min spawn inside", 2, $"Min {Constants.ICE_ZONE} to spawn");
@@ -103,5 +103,7 @@ public class ConfigManager
         isIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Can spawn outside", true, $"Can {Constants.ICE_ZONE} spawn outside");
         minIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Min spawn outside", 2, $"Min {Constants.ICE_ZONE} to spawn");
         maxIceZoneOutside = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Max spawn outside", 3, $"Max {Constants.ICE_ZONE} to spawn");
+        iceZonePlayerSpeed = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Player speed", -0.6f, $"Player speed reduction on {Constants.ICE_ZONE}");
+        iceZoneEnemySpeed = SnowPlaygrounds.configFile.Bind(Constants.ICE_ZONE, "Enemy speed", 0.5f, $"Enemy speed boost on {Constants.ICE_ZONE}");
     }
 }

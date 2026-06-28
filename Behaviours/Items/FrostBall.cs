@@ -1,8 +1,8 @@
 ﻿using GameNetcodeStuff;
 using LegaFusionCore.Behaviours;
 using LegaFusionCore.Managers;
-using LegaFusionCore.Managers.NetworkManagers;
-using LegaFusionCore.Registries;
+using LethalStatus.Managers;
+using LethalStatus.StatusEffects;
 using SnowPlaygrounds.Behaviours.Enemies;
 using UnityEngine;
 
@@ -21,7 +21,7 @@ public class FrostBall : LFCBouncyAoEProjectile
         => LFCGlobalManager.PlayAudio($"{LegaFusionCore.LegaFusionCore.modName}{LegaFusionCore.LegaFusionCore.poisonExplosionAudio.name}", position);
 
     protected override void OnAffectPlayerServer(PlayerControllerB player)
-        => LFCNetworkManager.Instance.ApplyStatusEveryoneRpc(throwingPlayer, (int)player.playerClientId, (int)LFCStatusEffectRegistry.StatusEffectType.FROST, 10, 10);
+        => LSNetworkManager.Instance.ApplyStatusEveryoneRpc(throwingPlayer, (int)player.playerClientId, (int)LSStatusEffectRegistry.StatusEffectType.FROST, 10, 10);
 
     protected override void OnAffectEnemyServer(EnemyAI enemy)
     {
@@ -30,6 +30,6 @@ public class FrostBall : LFCBouncyAoEProjectile
             frostbite.HitFrostbiteEveryoneRpc(isFrostBall: true);
             return;
         }
-        LFCNetworkManager.Instance.ApplyStatusEveryoneRpc(throwingPlayer, enemy.NetworkObject, (int)LFCStatusEffectRegistry.StatusEffectType.FROST, 10, 100);
+        LSNetworkManager.Instance.ApplyStatusEveryoneRpc(throwingPlayer, enemy.NetworkObject, (int)LSStatusEffectRegistry.StatusEffectType.FROST, 10, 100);
     }
 }

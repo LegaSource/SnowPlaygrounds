@@ -1,6 +1,6 @@
 ﻿using GameNetcodeStuff;
 using LegaFusionCore.Behaviours;
-using LegaFusionCore.Behaviours.Shaders;
+using LegaFusionCore.Managers;
 using LegaFusionCore.Utilities;
 using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.MapObjects;
@@ -123,14 +123,14 @@ public class SnowBallProjectile : NetworkBehaviour, IHittable
 
     private IEnumerator FreezeEnemyCoroutine(EnemyAI enemy)
     {
-        CustomPassManager.SetupAuraForObjects([enemy.gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}SnowBallFreeze");
+        LFCCustomPassManager.SetupAuraForObjects([enemy.gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}SnowBallFreeze");
         LFCEnemySpeedBehaviour speedBehaviour = enemy.GetComponent<LFCEnemySpeedBehaviour>();
         speedBehaviour?.AddSpeedData(SnowPlaygrounds.modName, (1f / ConfigManager.snowBallSlowdownFactor.Value) - 1, enemy.agent.speed);
 
         yield return new WaitForSeconds(ConfigManager.snowBallSlowdownDuration.Value);
 
         speedBehaviour?.RemoveSpeedData(SnowPlaygrounds.modName);
-        CustomPassManager.RemoveAuraFromObjects([enemy.gameObject], $"{SnowPlaygrounds.modName}SnowBallFreeze");
+        LFCCustomPassManager.RemoveAuraFromObjects([enemy.gameObject], $"{SnowPlaygrounds.modName}SnowBallFreeze");
     }
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]

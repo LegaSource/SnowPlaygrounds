@@ -1,7 +1,7 @@
 ﻿using GameNetcodeStuff;
-using LegaFusionCore.Managers.NetworkManagers;
 using LegaFusionCore.Registries;
 using LegaFusionCore.Utilities;
+using LethalStatus.StatusEffects;
 using SnowPlaygrounds.Behaviours.Enemies;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
@@ -178,10 +178,11 @@ public class Snowman : NetworkBehaviour, IHittable
         {
             if (LFCUtilities.ShouldBeLocalPlayer(hidingPlayer))
                 ExitSnowman();
+
             if (enemy is FrostbiteAI frostbite)
                 frostbite.HitFrostbiteForEveryone();
             else
-                LFCNetworkManager.Instance.ApplyStatusEveryoneRpc((int)hidingPlayer.playerClientId, enemy.NetworkObject, (int)LFCStatusEffectRegistry.StatusEffectType.FROST, 10, 100);
+                LSStatusEffectRegistry.ApplyStatus(enemy.gameObject, LSStatusEffectRegistry.StatusEffectType.FROST, (int)hidingPlayer.playerClientId, 10, 100);
         }
     }
 

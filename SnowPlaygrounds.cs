@@ -2,6 +2,7 @@
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using LegaFusionCore.Managers;
 using LethalLib.Extras;
 using LethalLib.Modules;
 using SnowPlaygrounds.Behaviours.Items;
@@ -19,9 +20,9 @@ namespace SnowPlaygrounds;
 [BepInPlugin(modGUID, modName, modVersion)]
 public class SnowPlaygrounds : BaseUnityPlugin
 {
-    internal const string modGUID = "Lega.SnowPlaygrounds";
-    internal const string modName = "Snow Playgrounds";
-    internal const string modVersion = "1.1.4";
+    public const string modGUID = "Lega.SnowPlaygrounds";
+    public const string modName = "Snow Playgrounds";
+    public const string modVersion = "1.1.8";
 
     private readonly Harmony harmony = new Harmony(modGUID);
     private static readonly AssetBundle bundle = AssetBundle.LoadFromFile(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "snowplaygrounds"));
@@ -35,6 +36,9 @@ public class SnowPlaygrounds : BaseUnityPlugin
     public static GameObject snowBallProjectileObj;
     public static GameObject snowBallItemObj;
     public static GameObject snowGunObj;
+
+    // Addons
+    public static GameObject frostMarkObj;
 
     // Hazards
     public static GameObject snowPileObj;
@@ -103,25 +107,8 @@ public class SnowPlaygrounds : BaseUnityPlugin
 
     public void LoadItems()
     {
-        snowBallItemObj = RegisterItem(typeof(SnowBallItem), bundle.LoadAsset<Item>("Assets/SnowBall/SP_SnowBallItem.asset")).spawnPrefab;
-        snowGunObj = RegisterItem(typeof(SnowGun), bundle.LoadAsset<Item>("Assets/SnowGun/SP_SnowGunItem.asset")).spawnPrefab;
-    }
-
-    public Item RegisterItem(Type type, Item item)
-    {
-        if (item.spawnPrefab.GetComponent(type) == null)
-        {
-            PhysicsProp script = item.spawnPrefab.AddComponent(type) as PhysicsProp;
-            script.grabbable = true;
-            script.grabbableToEnemies = true;
-            script.itemProperties = item;
-        }
-
-        NetworkPrefabs.RegisterNetworkPrefab(item.spawnPrefab);
-        Utilities.FixMixerGroups(item.spawnPrefab);
-        Items.RegisterItem(item);
-
-        return item;
+        snowBallItemObj = LFCObjectsManager.RegisterObject(typeof(SnowBallItem), bundle.LoadAsset<Item>("Assets/SnowBall/SP_SnowBallItem.asset")).spawnPrefab;
+        snowGunObj = LFCObjectsManager.RegisterObject(typeof(SnowGun), bundle.LoadAsset<Item>("Assets/SnowGun/SP_SnowGunItem.asset")).spawnPrefab;
     }
 
     public void LoadHazards()
@@ -172,6 +159,7 @@ public class SnowPlaygrounds : BaseUnityPlugin
     {
         HashSet<GameObject> gameObjects =
         [
+            (frostMarkObj = bundle.LoadAsset<GameObject>("Assets/Addons/SP_FrostMark.prefab")),
             (snowParticle = bundle.LoadAsset<GameObject>("Assets/SnowParticle/SP_SnowParticle.prefab")),
             (snowBallProjectileObj = bundle.LoadAsset<GameObject>("Assets/SnowBall/SP_SnowBallProjectile.prefab")),
             (frostBallObj = bundle.LoadAsset<GameObject>("Assets/FrostBall/SP_FrostBall.prefab")),

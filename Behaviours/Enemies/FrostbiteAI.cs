@@ -1,9 +1,9 @@
 ﻿using GameNetcodeStuff;
-using LegaFusionCore.Behaviours.Shaders;
 using LegaFusionCore.Managers;
 using LegaFusionCore.Managers.NetworkManagers;
 using LegaFusionCore.Registries;
 using LegaFusionCore.Utilities;
+using LethalStatus.StatusEffects;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Managers;
 using System;
@@ -234,9 +234,9 @@ public class FrostbiteAI : EnemyAI
 
     private IEnumerator HitCoroutine()
     {
-        CustomPassManager.SetupAuraForObjects([gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}FrostbiteHit");
+        LFCCustomPassManager.SetupAuraForObjects([gameObject], SnowPlaygrounds.snowShader, $"{SnowPlaygrounds.modName}FrostbiteHit");
         yield return new WaitForSeconds(0.2f);
-        CustomPassManager.RemoveAuraFromObjects([gameObject], $"{SnowPlaygrounds.modName}FrostbiteHit");
+        LFCCustomPassManager.RemoveAuraFromObjects([gameObject], $"{SnowPlaygrounds.modName}FrostbiteHit");
     }
 
     public override void KillEnemy(bool destroy = false)
@@ -250,7 +250,7 @@ public class FrostbiteAI : EnemyAI
         }
     }
 
-    public bool CanThrow() => canThrow && targetPlayer != null && !LFCStatusEffectRegistry.HasStatus(targetPlayer.gameObject, LFCStatusEffectRegistry.StatusEffectType.FROST);
+    public bool CanThrow() => canThrow && targetPlayer != null && !LSStatusEffectRegistry.HasStatus(targetPlayer.gameObject, LSStatusEffectRegistry.StatusEffectType.FROST);
 
     [Rpc(SendTo.Everyone, RequireOwnership = false)]
     public void PlayThrowEveryoneRpc() => creatureSFX.PlayOneShot(ThrowSound);
@@ -262,7 +262,7 @@ public class FrostbiteAI : EnemyAI
     {
         SPUtilities.PlaySnowmanParticle(transform.position, transform.rotation);
         LFCStatRegistry.RemoveModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}SnowBallEnemy");
-        CustomPassManager.RemoveAuraFromObjects([gameObject]);
+        LFCCustomPassManager.RemoveAuraFromObjects([gameObject]);
 
         base.OnDestroy();
     }

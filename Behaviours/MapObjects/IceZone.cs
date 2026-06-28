@@ -2,6 +2,7 @@
 using LegaFusionCore.Behaviours;
 using LegaFusionCore.Registries;
 using LegaFusionCore.Utilities;
+using SnowPlaygrounds.Managers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -37,7 +38,7 @@ public class IceZone : NetworkBehaviour
             if (LFCUtilities.IsServer && collider.TryGetComponent(out EnemyAICollisionDetect collisionDetect) && collisionDetect.mainScript != null)
             {
                 if (AddEntityIce(collisionDetect.mainScript.NetworkObjectId))
-                    collisionDetect.mainScript.GetComponent<LFCEnemySpeedBehaviour>()?.AddSpeedData($"{SnowPlaygrounds.modName}IceZone", 0.5f, collisionDetect.mainScript.agent.speed);
+                    collisionDetect.mainScript.GetComponent<LFCEnemySpeedBehaviour>()?.AddSpeedData($"{SnowPlaygrounds.modName}IceZone", ConfigManager.iceZoneEnemySpeed.Value, collisionDetect.mainScript.agent.speed);
                 return;
             }
             if (collider.TryGetComponent(out PlayerControllerB player) && LFCUtilities.ShouldBeLocalPlayer(player))
@@ -104,7 +105,7 @@ public class IceZone : NetworkBehaviour
                 if (LFCStatRegistry.HasModifierWithTagPrefix(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone"))
                     return;
 
-                LFCStatRegistry.AddModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone{id}", -0.75f);
+                LFCStatRegistry.AddModifier(LegaFusionCore.Constants.STAT_SPEED, $"{SnowPlaygrounds.modName}IceZone{id}", ConfigManager.iceZonePlayerSpeed.Value);
                 wasGrounded = player.thisController.isGrounded;
                 hasLastPosition = false;
                 slideVelocity = Vector3.zero;

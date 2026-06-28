@@ -1,5 +1,6 @@
 ﻿using GameNetcodeStuff;
 using LegaFusionCore.Managers;
+using LethalStatus.StatusEffects;
 using SnowPlaygrounds.Behaviours.Items;
 using SnowPlaygrounds.Behaviours.MapObjects;
 using Unity.Netcode;
@@ -63,6 +64,26 @@ public class SnowPlaygroundsNetworkManager : NetworkBehaviour
             snowman.currentStackedSnowBall = nbSnowBall;
             snowman.RefreshHoverTip();
             LFCMapObjectsManager.AttachMapObjectForEveryone(StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>(), snowman.gameObject);
+        }
+    }
+
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SpawnFrostMarkEveryoneRpc(int playerId, int playerWhoHit)
+    {
+        PlayerControllerB player = StartOfRound.Instance.allPlayerObjects[playerId].GetComponent<PlayerControllerB>();
+        LFCGlobalManager.PlayParticle(SnowPlaygrounds.frostMarkObj, player.transform.position, player.transform.rotation);
+        LSStatusEffectRegistry.ApplyStatus(player.gameObject, LSStatusEffectRegistry.StatusEffectType.FROST, playerWhoHit, 10, 100);
+    }
+
+    [Rpc(SendTo.Everyone, RequireOwnership = false)]
+    public void SpawnFrostMarkEveryoneRpc(NetworkObjectReference obj, int playerWhoHit)
+    {
+        if (obj.TryGet(out NetworkObject networkObject))
+        {
+            EnemyAI enemy = networkObject.gameObject.GetComponent<EnemyAI>();
+            Vector3 size = enemy.GetComponentInChildren<BoxCollider>().bounds.size;
+            LFCGlobalManager.PlayParticle(SnowPlaygrounds.frostMarkObj, enemy.transform.position, enemy.transform.rotation, scaleMain: false, scaleFactor: Mathf.Max(size.x, size.y, size.z) / 2f);
+            LSStatusEffectRegistry.ApplyStatus(enemy.gameObject, LSStatusEffectRegistry.StatusEffectType.FROST, playerWhoHit, 10, 100);
         }
     }
 }
